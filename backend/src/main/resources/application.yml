@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: pulseops
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pulseops}
+    username: ${DB_USERNAME:pulseops}
+    password: ${DB_PASSWORD:pulseops}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

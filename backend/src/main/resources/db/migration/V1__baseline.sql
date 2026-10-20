@@ -1,0 +1,2 @@
+-- Baseline migration. Business tables are introduced by the phases that own them.
+-- This migration exists so schema history and Flyway wiring are verified from day one.
