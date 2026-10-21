@@ -12,18 +12,21 @@
 - `target_url`：HTTP 类型使用
 - `method`
 - `interval_seconds`
-- `timeout_ms`
-- `failure_threshold`
-- `recovery_threshold`
-- `heartbeat_grace_seconds`
+- `connect_timeout_ms`
+- `response_timeout_ms`
+- `expected_status_min`
+- `expected_status_max`
 - `enabled`
-- `current_status`
+- `current_status`：`UNKNOWN`、`UP`、`DOWN`；Phase 1 由最近一次探测结果决定
 - `last_checked_at`
 - `last_success_at`
+- `next_check_at`：内部调度字段，不对外暴露
 - `created_at`
 - `updated_at`
 
-对时间间隔、超时、URL 和状态字段实施服务端校验。
+Phase 2 加入 `failure_threshold`、`recovery_threshold`；Phase 3 加入 `heartbeat_grace_seconds`。各阶段迁移只创建该阶段需要的列。
+
+对时间间隔、超时、URL 和状态字段实施服务端校验。连接超时与响应超时分别对应建连阶段和已建连后的响应阶段，见 ADR-0004。
 
 ## CheckResult
 表示一次探测或检查结果。

@@ -13,7 +13,7 @@
 - PostgreSQL
 - Spring Data JPA；复杂查询可使用 SQL/JDBC
 - Flyway
-- Java HttpClient 或 Spring WebClient
+- Apache HttpClient 5（SSRF 防护见 ADR-0002）
 - Spring Scheduler
 - Vue 3 + TypeScript + Vite
 - Docker / Docker Compose
