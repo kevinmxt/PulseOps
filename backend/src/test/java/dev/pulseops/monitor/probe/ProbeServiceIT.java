@@ -170,6 +170,8 @@ class ProbeServiceIT {
         assertThat(updated.getCurrentStatus()).isEqualTo(MonitorStatus.UP);
         assertThat(updated.getLastCheckedAt()).isEqualTo(result.getFinishedAt());
         assertThat(updated.getLastSuccessAt()).isEqualTo(result.getFinishedAt());
+        assertThat(updated.getNextCheckAt())
+                .isEqualTo(result.getFinishedAt().plusSeconds(updated.getIntervalSeconds()));
         assertConfigUnchanged(monitor, updated);
     }
 
@@ -203,6 +205,8 @@ class ProbeServiceIT {
         assertThat(updated.getCurrentStatus()).isEqualTo(MonitorStatus.DOWN);
         assertThat(updated.getLastCheckedAt()).isEqualTo(result.getFinishedAt());
         assertThat(updated.getLastSuccessAt()).isNull();
+        assertThat(updated.getNextCheckAt())
+                .isEqualTo(result.getFinishedAt().plusSeconds(updated.getIntervalSeconds()));
         assertConfigUnchanged(monitor, updated);
     }
 
@@ -384,7 +388,6 @@ class ProbeServiceIT {
         assertThat(after.getExpectedStatusMax()).isEqualTo(before.getExpectedStatusMax());
         assertThat(after.isEnabled()).isEqualTo(before.isEnabled());
         assertThat(after.getCreatedAt()).isEqualTo(before.getCreatedAt());
-        assertThat(after.getNextCheckAt()).isEqualTo(before.getNextCheckAt());
     }
 
     private static void restoreProperty(String name, String value) {

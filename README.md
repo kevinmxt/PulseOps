@@ -65,6 +65,18 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
 数据库结构变更一律通过 `backend/src/main/resources/db/migration/` 下的 Flyway 迁移完成，不使用 Hibernate 自动建表。
 
+### 探测调度
+
+以下 Spring 配置项位于 `pulseops.probe` 前缀下，可通过环境变量或启动参数覆盖：
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `pulseops.probe.tick-interval` | `1s` | 调度 tick 的 fixedDelay；最小 100ms |
+| `pulseops.probe.batch-size` | `200` | 每次 tick 最多提交的到期 Monitor 数 |
+| `pulseops.probe.pool-size` | `8` | 探测线程数 |
+| `pulseops.probe.queue-capacity` | `100` | 探测任务队列容量；被拒绝的任务在下一 tick 重试 |
+| `pulseops.probe.scheduling-enabled` | `true` | 是否启用自动调度；集成测试中关闭并手动调用 tick |
+
 ## 测试与构建
 
 ```bash

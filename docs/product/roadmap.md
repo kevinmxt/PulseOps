@@ -18,7 +18,7 @@ Phase 0 已完成；下一阶段为 Phase 1 — HTTP 监控核心。
 ### Phase 1：HTTP 监控核心
 - [x] Monitor CRUD
 - [x] URL 与配置校验
-- [ ] 定时探测
+- [x] 定时探测
 - [x] 超时、状态码与错误分类
 - [x] CheckResult 持久化
 - [ ] 基础监控状态查询

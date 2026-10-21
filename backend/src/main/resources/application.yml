@@ -17,6 +17,14 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+pulseops:
+  probe:
+    tick-interval: 1s
+    batch-size: 200
+    pool-size: 8
+    queue-capacity: 100
+    scheduling-enabled: true
+
 server:
   port: ${SERVER_PORT:8080}
   address: ${SERVER_ADDRESS:127.0.0.1}

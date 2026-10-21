@@ -10,7 +10,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
-import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class ProbeService {
@@ -30,17 +30,32 @@ public class ProbeService {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    public CheckResultEntity probe(Long monitorId) {
+    public Optional<CheckResultEntity> probe(Long monitorId) {
         MonitorEntity monitor = monitorRepository.findById(monitorId)
                 .orElseThrow(() -> new MonitorNotFoundException(monitorId));
         if (!monitor.isEnabled()) {
             throw new MonitorDisabledException(monitorId);
         }
         ProbeOutcome outcome = executor.execute(monitor);
-        return Objects.requireNonNull(transactionTemplate.execute(status -> persist(monitorId, outcome)));
+        return transactionTemplate.execute(status -> persist(monitorId, outcome));
     }
 
-    private CheckResultEntity persist(Long monitorId, ProbeOutcome outcome) {
+    private Optional<CheckResultEntity> persist(Long monitorId, ProbeOutcome outcome) {
+        MonitorEntity monitor = monitorRepository.findById(monitorId).orElse(null);
+        if (monitor == null) {
+            return Optional.empty();
+        }
+        Instant nextCheckAt = outcome.finishedAt().plusSeconds(monitor.getIntervalSeconds());
+        MonitorStatus status = outcome.success() ? MonitorStatus.UP : MonitorStatus.DOWN;
+        Instant successAt = outcome.success() ? outcome.finishedAt() : null;
+
+        int updated = monitorRepository.updateProbeStatus(
+                monitorId, status, outcome.finishedAt(), successAt, nextCheckAt);
+        if (updated == 0) {
+            // The monitor was deleted while the probe was in flight; discard the result.
+            return Optional.empty();
+        }
+
         CheckResultEntity result = new CheckResultEntity();
         result.setMonitorId(monitorId);
         result.setStartedAt(outcome.startedAt());
@@ -50,11 +65,6 @@ public class ProbeService {
         result.setFailureType(outcome.failureType());
         result.setHttpStatusCode(outcome.httpStatusCode());
         result.setErrorSummary(outcome.errorSummary());
-        CheckResultEntity saved = checkResultRepository.save(result);
-
-        MonitorStatus status = outcome.success() ? MonitorStatus.UP : MonitorStatus.DOWN;
-        Instant successAt = outcome.success() ? outcome.finishedAt() : null;
-        monitorRepository.updateProbeStatus(monitorId, status, outcome.finishedAt(), successAt);
-        return saved;
+        return Optional.of(checkResultRepository.save(result));
     }
 }
