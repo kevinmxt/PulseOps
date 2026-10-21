@@ -46,7 +46,7 @@
 
 ### Issue tracker
 
-Issues live in GitHub Issues; no git remote is configured yet. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues; `origin` is configured as `kevinmxt/PulseOps`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
