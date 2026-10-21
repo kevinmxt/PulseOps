@@ -14,8 +14,13 @@ public class TargetPolicyConfiguration {
     private static final Duration RESOLUTION_TIMEOUT = Duration.ofSeconds(2);
 
     @Bean
-    TargetPolicy targetPolicy() {
-        HostResolver dnsResolver = host -> List.copyOf(Arrays.asList(InetAddress.getAllByName(host)));
-        return new SsrfTargetPolicy(new TimeoutHostResolver(dnsResolver, RESOLUTION_TIMEOUT));
+    HostResolver hostResolver() {
+        HostResolver systemResolver = host -> List.copyOf(Arrays.asList(InetAddress.getAllByName(host)));
+        return new TimeoutHostResolver(systemResolver, RESOLUTION_TIMEOUT);
+    }
+
+    @Bean
+    TargetPolicy targetPolicy(HostResolver hostResolver) {
+        return new SsrfTargetPolicy(hostResolver);
     }
 }
