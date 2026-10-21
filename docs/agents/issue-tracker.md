@@ -16,6 +16,16 @@ The `origin` remote is configured as `kevinmxt/PulseOps`, so `gh` infers the rep
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## Completing an issue
+
+Standard closing steps once the work is committed and verified:
+
+1. Push the current branch: `git push`.
+2. Post the completion report as an issue comment: `gh issue comment <number> --body "..."`. Use the report format in root `CLAUDE.md` (完成内容 / 主要修改文件 / 测试与构建结果 / 风险与限制 / 下一步建议) and include the commit hash.
+3. Close the issue: `gh issue close <number>`.
+
+Do not close an issue before its acceptance criteria are verified and the report is posted.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
