@@ -2,7 +2,7 @@
 
 面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任务心跳监控平台。
 
-项目当前处于 **Phase 0：工程初始化**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)。
+项目当前处于 **Phase 1：HTTP 监控核心**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)。
 
 ## 目录结构
 
@@ -61,6 +61,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `DB_USERNAME` | `pulseops` | 数据库账号 |
 | `DB_PASSWORD` | `pulseops` | 数据库密码，非本地环境必须覆盖 |
 | `SERVER_PORT` | `8080` | HTTP 端口 |
+| `SERVER_ADDRESS` | `127.0.0.1` | 监听地址；Phase 4 认证完成前保持回环地址 |
 
 数据库结构变更一律通过 `backend/src/main/resources/db/migration/` 下的 Flyway 迁移完成，不使用 Hibernate 自动建表。
 
