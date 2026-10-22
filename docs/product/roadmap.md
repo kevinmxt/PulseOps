@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；当前进入 Phase 1.1 — 可靠性修复门槛（源于 2026-10-22 Phase 1 源码审查，见 `reviews/phase1-code-review.md`），完成后进入 Phase 2 — Incident 与通知。
+Phase 1.1 已完成（CI 与验收证据见 [`quality/phase1-acceptance.md`](../quality/phase1-acceptance.md)）；下一阶段为 Phase 2 — Incident 与通知。
 
 ## 阶段顺序
 
@@ -34,7 +34,7 @@ Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；当前�
 - [x] DNS 超时资源边界验证并给出结论
 - [x] 解析器许可耗尽与解析超时的日志、指标可观测性
 - [x] 建立 CI（后端 verify、前端 build）并修复 `backend/mvnw` 执行位
-- [ ] 更新 Phase 1 验收文档，区分历史测试记录与 CI 证据
+- [x] 更新 Phase 1 验收文档，区分历史测试记录与 CI 证据
 
 完成条件：配置变更竞态测试通过；执行期 SSRF 测试通过；CI 在干净 checkout 中通过。
 
@@ -80,7 +80,7 @@ Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；当前�
 完成条件：未授权访问被拒绝；清理任务遵守保留期限；备份可恢复。
 
 ### Phase 5：VPS 部署
-前置条件：Phase 4B 已完成；任何管理入口公网可达前认证必须启用。
+前置条件：Phase 4B 已完成；公网认证硬性门槛见 [`quality/deployment.md`](../quality/deployment.md)。
 
 - [ ] 生产 Compose 配置
 - [ ] Caddy / HTTPS
@@ -103,7 +103,7 @@ Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；当前�
 - 按阶段顺序推进；若要调整顺序，记录原因。
 - 未满足验收条件不得标记完成。
 - 阶段完成必须附 CI 运行链接（干净 checkout），不能只依据本地测试记录。
-- 同一数据库只允许一个启用调度的应用实例；多实例前需完成专门设计与并发测试。
+- 单实例调度约束以 [`architecture/overview.md`](../architecture/overview.md) 为准；公网认证门槛以 [`quality/deployment.md`](../quality/deployment.md) 为准。
 - 不伪造测试、运行或用户反馈证据。
 - 当前阶段只实现必要功能，不提前实现未来阶段。
 - 每次任务结束后，只更新实际发生变化的状态。
