@@ -22,6 +22,7 @@
 | GET | `/api/v1/incidents/{id}` | 查询故障详情 |
 | POST | `/api/v1/heartbeats/{token}` | 上报任务心跳 |
 | GET | `/actuator/health` | 健康检查 |
+| GET | `/actuator/metrics/{name}` | 按名查询运行指标 |
 
 路径可随实现调整，但必须维护一致的 API 文档和测试。
 
@@ -36,6 +37,7 @@
 - 心跳令牌独立于管理凭证。
 - 不在响应或日志中暴露秘密。
 - `/actuator/health` 只返回必要的健康信息。
+- Actuator 端点只随应用监听地址暴露（默认 `127.0.0.1`），不得直接对公网开放。
 - 目标 URL 必须遵守 SSRF 防护规范。
 
 ## 兼容性

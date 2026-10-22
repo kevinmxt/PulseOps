@@ -32,6 +32,7 @@ Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；当前�
 - [x] 探测语义相关配置变更后立即重探
 - [x] SSRF 特殊用途地址策略明确化并补测试
 - [x] DNS 超时资源边界验证并给出结论
+- [x] 解析器许可耗尽与解析超时的日志、指标可观测性
 - [ ] 建立 CI（后端 verify、前端 build）并修复 `backend/mvnw` 执行位
 - [ ] 更新 Phase 1 验收文档，区分历史测试记录与 CI 证据
 
