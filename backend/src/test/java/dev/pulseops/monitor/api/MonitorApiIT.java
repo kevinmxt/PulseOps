@@ -203,8 +203,13 @@ class MonitorApiIT {
             "http://127.0.0.1/health",
             "http://localhost/health",
             "http://10.0.0.1/health",
+            "http://172.16.0.1/health",
+            "http://192.168.1.1/health",
+            "http://100.64.0.1/health",
+            "http://169.254.1.1/health",
             "http://169.254.169.254/latest/meta-data",
-            "http://[::1]/health"
+            "http://[::1]/health",
+            "http://[fe80::1]/health"
     })
     void rejectsRestrictedTargetAddresses(String targetUrl) throws Exception {
         long before = repository.count();
@@ -218,6 +223,22 @@ class MonitorApiIT {
                 .andExpect(jsonPath("$.code").value("INVALID_TARGET_URL"));
 
         assertThat(repository.count()).isEqualTo(before);
+    }
+
+    @Test
+    void blockedTargetErrorDoesNotEchoRequestedUrl() throws Exception {
+        String response = mockMvc.perform(post("/api/v1/monitors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"blocked","targetUrl":"http://127.0.0.1/secret-path-marker"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_TARGET_URL"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(response)
+                .doesNotContain("secret-path-marker")
+                .doesNotContain("http://127.0.0.1");
     }
 
     @Test

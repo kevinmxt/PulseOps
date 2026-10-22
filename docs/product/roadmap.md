@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 0 已完成；下一阶段为 Phase 1 — HTTP 监控核心。
+Phase 1 已完成（验收证据见 `quality/phase1-acceptance.md`）；下一阶段为 Phase 2 — Incident 与通知。
 
 ## 阶段顺序
 
