@@ -86,7 +86,16 @@ class ProbeSsrfIT {
             "http://169.254.1.1/health",
             "http://169.254.169.254/latest/meta-data",
             "http://[::1]/health",
-            "http://[fe80::1]/health"
+            "http://[fe80::1]/health",
+            "http://192.0.2.1/health",
+            "http://198.18.0.1/health",
+            "http://198.51.100.1/health",
+            "http://203.0.113.1/health",
+            "http://[2001:db8::1]/health",
+            "http://[2001::1]/health",
+            "http://[2002:7f00:1::]/health",
+            "http://[64:ff9b::10.0.0.1]/health",
+            "http://[::ffff:10.0.0.1]/health"
     })
     void blocksRestrictedTargetAtExecutionTime(String targetUrl) {
         MonitorEntity monitor = saveMonitor(targetUrl);

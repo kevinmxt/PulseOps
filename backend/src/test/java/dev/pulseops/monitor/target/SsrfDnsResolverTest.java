@@ -35,11 +35,38 @@ class SsrfDnsResolverTest {
             "fe80::1",
             "fc00::1",
             "100.64.0.1",
-            "0.0.0.0"
+            "0.0.0.0",
+            "192.0.2.1",
+            "198.51.100.1",
+            "203.0.113.1",
+            "198.18.0.1",
+            "240.0.0.1",
+            "255.255.255.255",
+            "192.0.0.1",
+            "192.88.99.1",
+            "2001:db8::1",
+            "100::1",
+            "3fff::1",
+            "64:ff9b:1::1",
+            "5f00::1",
+            "2001:2::1",
+            "2001:20::1",
+            "2001:1::1",
+            "2001::1",
+            "2002:7f00:1::",
+            "::ffff:10.0.0.1",
+            "64:ff9b::10.0.0.1"
     })
     void refusesToResolveRestrictedAddressesAtExecutionTime(String ip) {
         assertThatThrownBy(() -> resolver.resolve(ip))
                 .isInstanceOf(UnknownHostException.class);
+    }
+
+    @Test
+    void resolvesPublicNat64Address() throws Exception {
+        InetAddress[] addresses = resolver.resolve("64:ff9b::8.8.8.8");
+
+        assertThat(addresses).hasSize(1);
     }
 
     @Test
