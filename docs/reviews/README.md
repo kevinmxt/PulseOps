@@ -12,7 +12,7 @@
 
 - 审查对象是本次上传的 `PulseOps-master.zip` 源码快照，不代表 GitHub 后续提交。
 - 以源码静态阅读、配置/迁移/测试文档核对为主。
-- 本环境无法完成 `./mvnw verify`：上传 ZIP 未保留 Unix 可执行权限；通过 `bash mvnw verify` 尝试后，Maven Wrapper 下载因当前环境网络不可用而失败；Docker daemon 也不可用。因此，**本报告不声称已在本环境重新跑通测试**。
+- 快照审查环境无法完成 `./mvnw verify`：上传 ZIP 未保留 Unix 可执行权限；通过 `bash mvnw verify` 尝试后，Maven Wrapper 下载因网络不可用而失败；Docker daemon 也不可用。因此，**本报告不声称已在该环境重新跑通测试**。这些限制描述的是历史快照，不代表当前仓库：执行位已修复并建立 CI，当前测试与 CI 证据见 [`../quality/phase1-acceptance.md`](../quality/phase1-acceptance.md)。
 - 报告中的“已确认”指可从源码控制流直接确认；“风险/加固建议”不等于已经发生的漏洞。
 - 报告不替代部署环境中的渗透测试、压力测试和备份恢复演练。
 

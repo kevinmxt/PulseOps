@@ -3,9 +3,11 @@
 - 状态：Accepted
 - 日期：2026-10-21
 
+> 注：路线图已将 Phase 4 拆分为 Phase 4A（UI）与 Phase 4B（认证与数据维护）。本 ADR 中的“Phase 4 认证”对应 Phase 4B；公网认证硬性门槛以 [`../quality/deployment.md`](../quality/deployment.md) 为唯一事实来源。
+
 ## 背景
 
-`docs/architecture/security.md` 要求公网管理界面必须启用认证，但 `docs/product/roadmap.md` 把认证与授权安排在 Phase 4。Phase 1 需要先交付 HTTP 监控核心。
+依据安全规范，公网管理界面必须启用认证，但 `docs/product/roadmap.md` 当时把认证与授权安排在 Phase 4。Phase 1 需要先交付 HTTP 监控核心。
 
 ## 决策
 
