@@ -52,6 +52,7 @@ DNS 解析通过 `TimeoutHostResolver` 限制同时在途的解析数。许可�
 - 指标通过 `/actuator/metrics/{name}` 拉取，进程重启后归零。
 - 进入许可耗尽状态时记录一条 `warn`，许可恢复可用时记录一条 `info`；单次解析超时记为 `debug`。日志中的目标主机名会剥离换行符，避免日志注入。
 - 许可耗尽落库为 `DNS_RESOLVER_EXHAUSTED`，与目标侧故障区分；真实 DNS 失败与解析超时仍归类为 `CONNECTION_FAILED`。两种情况 Monitor 都置为 `DOWN`。
+- 解析器持续处于耗尽状态达到 `pulseops.health.resolver.down-after`（默认 `60s`）时，`/actuator/health` 返回 `DOWN`（HTTP 503）；恢复可用后立即回到 `UP`。仅在途解析占满许可、没有请求被拒绝时不算不健康。
 
 ## 安全
 必须遵守 `docs/architecture/security.md` 中的 SSRF 规则。不要在日志中记录敏感请求头或完整响应正文。

@@ -21,7 +21,7 @@
 | GET | `/api/v1/incidents` | 查询故障事件 |
 | GET | `/api/v1/incidents/{id}` | 查询故障详情 |
 | POST | `/api/v1/heartbeats/{token}` | 上报任务心跳 |
-| GET | `/actuator/health` | 健康检查 |
+| GET | `/actuator/health` | 健康检查（DNS 解析器持续耗尽时返回 503） |
 | GET | `/actuator/metrics/{name}` | 按名查询运行指标 |
 
 路径可随实现调整，但必须维护一致的 API 文档和测试。

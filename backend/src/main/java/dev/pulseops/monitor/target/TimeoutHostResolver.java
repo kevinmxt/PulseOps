@@ -8,7 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -38,22 +40,26 @@ public class TimeoutHostResolver implements HostResolver {
 
     private final HostResolver delegate;
     private final Duration timeout;
+    private final Clock clock;
     private final Semaphore inFlightPermits;
     private final Counter timeoutCounter;
     private final Counter exhaustedCounter;
     private final AtomicBoolean exhausted = new AtomicBoolean();
+    private volatile Instant exhaustedSince;
 
-    public TimeoutHostResolver(HostResolver delegate, Duration timeout, MeterRegistry meterRegistry) {
-        this(delegate, timeout, DEFAULT_MAX_IN_FLIGHT_RESOLUTIONS, meterRegistry);
+    public TimeoutHostResolver(HostResolver delegate, Duration timeout, Clock clock,
+                               MeterRegistry meterRegistry) {
+        this(delegate, timeout, DEFAULT_MAX_IN_FLIGHT_RESOLUTIONS, clock, meterRegistry);
     }
 
     TimeoutHostResolver(HostResolver delegate, Duration timeout, int maxInFlightResolutions,
-                        MeterRegistry meterRegistry) {
+                        Clock clock, MeterRegistry meterRegistry) {
         if (maxInFlightResolutions < 1) {
             throw new IllegalArgumentException("maxInFlightResolutions must be positive");
         }
         this.delegate = delegate;
         this.timeout = timeout;
+        this.clock = clock;
         this.inFlightPermits = new Semaphore(maxInFlightResolutions);
         Gauge.builder("resolver.permits.available", inFlightPermits, Semaphore::availablePermits)
                 .description("DNS resolution permits not held by an in-flight lookup")
@@ -67,6 +73,7 @@ public class TimeoutHostResolver implements HostResolver {
         if (!inFlightPermits.tryAcquire()) {
             exhaustedCounter.increment();
             if (exhausted.compareAndSet(false, true)) {
+                exhaustedSince = clock.instant();
                 log.warn("DNS resolver permits exhausted; rejecting resolution of {}", sanitize(host));
             }
             throw new ResolverBusyException(host);
@@ -123,8 +130,17 @@ public class TimeoutHostResolver implements HostResolver {
         if (exhausted.get()
                 && inFlightPermits.availablePermits() > 0
                 && exhausted.compareAndSet(true, false)) {
+            exhaustedSince = null;
             log.info("DNS resolver permits available again");
         }
+    }
+
+    public boolean isExhausted() {
+        return exhausted.get();
+    }
+
+    public Instant exhaustedSince() {
+        return exhaustedSince;
     }
 
     private static String sanitize(String host) {

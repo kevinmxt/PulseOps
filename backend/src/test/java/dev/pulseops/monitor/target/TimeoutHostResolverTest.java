@@ -10,7 +10,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,12 +24,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TimeoutHostResolverTest {
 
     private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final Clock clock = Clock.fixed(Instant.parse("2026-10-22T00:00:00Z"), ZoneOffset.UTC);
 
     @Test
     void returnsAddressesWhenResolutionCompletesInTime() throws Exception {
         TimeoutHostResolver resolver = new TimeoutHostResolver(
                 host -> List.of(InetAddress.getByName("8.8.8.8")),
-                Duration.ofSeconds(1), meterRegistry);
+                Duration.ofSeconds(1), clock, meterRegistry);
 
         assertThat(resolver.resolve("example.com")).hasSize(1);
     }
@@ -43,7 +47,7 @@ class TimeoutHostResolverTest {
             return List.of(InetAddress.getByName("8.8.8.8"));
         };
         TimeoutHostResolver resolver = new TimeoutHostResolver(
-                blockingResolver, Duration.ofMillis(25), 4, meterRegistry);
+                blockingResolver, Duration.ofMillis(25), 4, clock, meterRegistry);
 
         assertThat(availablePermits()).isEqualTo(4.0);
 
@@ -66,7 +70,7 @@ class TimeoutHostResolverTest {
                     }
                     return List.of();
                 },
-                Duration.ofMillis(25), meterRegistry);
+                Duration.ofMillis(25), clock, meterRegistry);
         Logger logger = (Logger) LoggerFactory.getLogger(TimeoutHostResolver.class);
         Level previousLevel = logger.getLevel();
         logger.setLevel(Level.DEBUG);
@@ -98,7 +102,7 @@ class TimeoutHostResolverTest {
             return List.of(InetAddress.getByName("8.8.8.8"));
         };
         TimeoutHostResolver resolver = new TimeoutHostResolver(
-                blockingResolver, Duration.ofMillis(25), 1, meterRegistry);
+                blockingResolver, Duration.ofMillis(25), 1, clock, meterRegistry);
         ListAppender<ILoggingEvent> appender = attachAppender();
         try {
             assertThatThrownBy(() -> resolver.resolve("slow.example"))
@@ -111,6 +115,8 @@ class TimeoutHostResolverTest {
             }
 
             assertThat(meterRegistry.get("resolver.exhausted").counter().count()).isEqualTo(3);
+            assertThat(resolver.isExhausted()).isTrue();
+            assertThat(resolver.exhaustedSince()).isEqualTo(clock.instant());
             List<ILoggingEvent> warnings = warningsContaining(appender, "permits exhausted");
             assertThat(warnings).hasSize(1);
             assertThat(warnings.get(0).getFormattedMessage()).doesNotContain("\n");
@@ -132,7 +138,7 @@ class TimeoutHostResolverTest {
             return List.of(InetAddress.getByName("8.8.8.8"));
         };
         TimeoutHostResolver resolver = new TimeoutHostResolver(
-                blockingResolver, Duration.ofMillis(25), 1, meterRegistry);
+                blockingResolver, Duration.ofMillis(25), 1, clock, meterRegistry);
         ListAppender<ILoggingEvent> appender = attachAppender();
         try {
             assertThatThrownBy(() -> resolver.resolve("slow.example"))
@@ -144,6 +150,9 @@ class TimeoutHostResolverTest {
             release.countDown();
             awaitUntil(Duration.ofSeconds(2), () ->
                     assertThat(infosContaining(appender, "available again")).hasSize(1));
+
+            assertThat(resolver.isExhausted()).isFalse();
+            assertThat(resolver.exhaustedSince()).isNull();
 
             assertThat(resolver.resolve("ok.example")).hasSize(1);
             assertThat(infosContaining(appender, "available again")).hasSize(1);
@@ -171,7 +180,7 @@ class TimeoutHostResolverTest {
             return List.of(InetAddress.getByName("8.8.8.8"));
         };
         TimeoutHostResolver resolver = new TimeoutHostResolver(
-                blockingResolver, Duration.ofMillis(25), 4, meterRegistry);
+                blockingResolver, Duration.ofMillis(25), 4, clock, meterRegistry);
 
         long startNanos = System.nanoTime();
         for (int attempt = 0; attempt < 40; attempt++) {
@@ -200,7 +209,7 @@ class TimeoutHostResolverTest {
                 throw new UnknownHostException(host);
             }
             return List.of(InetAddress.getByName("8.8.8.8"));
-        }, Duration.ofSeconds(1), 1, meterRegistry);
+        }, Duration.ofSeconds(1), 1, clock, meterRegistry);
 
         assertThatThrownBy(() -> resolver.resolve("fail.example"))
                 .isInstanceOf(UnknownHostException.class);
@@ -218,7 +227,7 @@ class TimeoutHostResolverTest {
                     }
                     return List.of();
                 },
-                Duration.ofMillis(50), meterRegistry);
+                Duration.ofMillis(50), clock, meterRegistry);
 
         assertThatThrownBy(() -> resolver.resolve("slow.example"))
                 .isInstanceOf(UnknownHostException.class);
