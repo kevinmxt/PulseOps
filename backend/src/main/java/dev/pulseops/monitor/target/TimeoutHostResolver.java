@@ -69,7 +69,7 @@ public class TimeoutHostResolver implements HostResolver {
             if (exhausted.compareAndSet(false, true)) {
                 log.warn("DNS resolver permits exhausted; rejecting resolution of {}", sanitize(host));
             }
-            throw new UnknownHostException("resolver busy: " + host);
+            throw new ResolverBusyException(host);
         }
 
         CompletableFuture<List<InetAddress>> future = new CompletableFuture<>();

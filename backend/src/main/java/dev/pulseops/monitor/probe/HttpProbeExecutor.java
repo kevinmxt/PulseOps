@@ -1,6 +1,7 @@
 package dev.pulseops.monitor.probe;
 
 import dev.pulseops.monitor.MonitorEntity;
+import dev.pulseops.monitor.target.ResolverBusyException;
 import org.apache.hc.client5.http.ConnectTimeoutException;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -80,6 +81,9 @@ public class HttpProbeExecutor {
         if (hasCause(failure, ConnectTimeoutException.class)) {
             return CheckFailureType.CONNECT_TIMEOUT;
         }
+        if (hasCause(failure, ResolverBusyException.class)) {
+            return CheckFailureType.DNS_RESOLVER_EXHAUSTED;
+        }
         if (hasCause(failure, SocketTimeoutException.class)) {
             return CheckFailureType.RESPONSE_TIMEOUT;
         }
@@ -100,6 +104,7 @@ public class HttpProbeExecutor {
     private static String summaryFor(CheckFailureType failureType, Throwable failure, MonitorEntity monitor) {
         return switch (failureType) {
             case CONNECTION_FAILED -> "Connection failed: " + rootCauseName(failure);
+            case DNS_RESOLVER_EXHAUSTED -> "DNS resolver overloaded: too many in-flight resolutions";
             case CONNECT_TIMEOUT -> "Connection timed out after " + monitor.getConnectTimeoutMs() + " ms";
             case RESPONSE_TIMEOUT -> "Response timed out after " + monitor.getResponseTimeoutMs() + " ms";
             case UNEXPECTED_STATUS -> "Unexpected HTTP status code";

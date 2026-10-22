@@ -1,10 +1,12 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.monitor.target.ResolverBusyException;
 import org.apache.hc.client5.http.ConnectTimeoutException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.channels.UnresolvedAddressException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +34,26 @@ class HttpProbeExecutorTest {
     @Test
     void mapsIoExceptionToConnectionFailure() {
         assertThat(HttpProbeExecutor.classifyFailure(new IOException("Connection reset")))
+                .isEqualTo(CheckFailureType.CONNECTION_FAILED);
+    }
+
+    @Test
+    void mapsResolverBusyToDnsResolverExhausted() {
+        assertThat(HttpProbeExecutor.classifyFailure(new ResolverBusyException("example.com")))
+                .isEqualTo(CheckFailureType.DNS_RESOLVER_EXHAUSTED);
+    }
+
+    @Test
+    void mapsWrappedResolverBusyToDnsResolverExhausted() {
+        RuntimeException wrapped = new RuntimeException(new ResolverBusyException("example.com"));
+
+        assertThat(HttpProbeExecutor.classifyFailure(wrapped))
+                .isEqualTo(CheckFailureType.DNS_RESOLVER_EXHAUSTED);
+    }
+
+    @Test
+    void mapsPlainUnknownHostToConnectionFailure() {
+        assertThat(HttpProbeExecutor.classifyFailure(new UnknownHostException("blocked.example")))
                 .isEqualTo(CheckFailureType.CONNECTION_FAILED);
     }
 

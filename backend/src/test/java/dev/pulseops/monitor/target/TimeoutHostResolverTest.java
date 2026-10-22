@@ -106,7 +106,7 @@ class TimeoutHostResolverTest {
 
             for (int attempt = 0; attempt < 3; attempt++) {
                 assertThatThrownBy(() -> resolver.resolve("blocked\nexample"))
-                        .isInstanceOf(UnknownHostException.class)
+                        .isInstanceOf(ResolverBusyException.class)
                         .hasMessageContaining("resolver busy");
             }
 
