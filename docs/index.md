@@ -11,7 +11,7 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 3. 开始新迭代或选择下一项任务时，读取 `product/roadmap.md`。
 4. 修改架构、技术栈或跨模块边界时，读取 `architecture/overview.md`；必要时创建 ADR。
 5. 涉及数据库时读取 `architecture/data-model.md`。
-6. 涉及用户输入 URL、认证、令牌、网络边界或敏感数据时读取 `architecture/security.md`。
+6. 涉及用户输入 URL、认证、令牌、网络边界或敏感数据时读取 `architecture/security.md`；公网发布与认证硬性门槛另读 `quality/deployment.md`。
 7. 完成任务前，按变更范围读取 `quality/acceptance.md`；涉及部署时另读 `quality/deployment.md`。
 8. 如果专题文档缺失，不要自行假设它已存在。根据已有规范实现最小方案，并在必要时提出新增文档。
 
@@ -29,8 +29,8 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | `specs/incidents.md`         | 故障状态机和通知             | Incident、告警、恢复 |
 | `specs/api.md`               | REST API 约定          | 接口设计或修改        |
 | `quality/acceptance.md`      | 全局测试和完成定义            | 实现完成、提交前       |
-| `quality/phase1-acceptance.md` | Phase 1 验收证据与限制       | 阶段验收与回顾        |
-| `quality/deployment.md`      | VPS、Compose、HTTPS、备份 | 部署和运维          |
+| `quality/phase1-acceptance.md` | Phase 1/1.1 验收证据（CI 与历史记录）与限制 | 阶段验收与回顾        |
+| `quality/deployment.md`      | VPS、Compose、HTTPS、备份、公网发布硬门槛 | 部署和运维          |
 | `adr/README.md`              | 架构决策记录规则             | 重大技术决策         |
 
 ## 规范冲突处理

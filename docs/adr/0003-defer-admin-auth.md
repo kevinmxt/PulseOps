@@ -3,7 +3,7 @@
 - 状态：Accepted
 - 日期：2026-10-21
 
-> 注：路线图已将 Phase 4 拆分为 Phase 4A（UI）与 Phase 4B（认证与数据维护）。本 ADR 中的“Phase 4 认证”对应 Phase 4B；公网认证硬性门槛以 [`../quality/deployment.md`](../quality/deployment.md) 为唯一事实来源。
+> 注：路线图已将 Phase 4 拆分为 Phase 4A（UI）与 Phase 4B（认证与数据维护）。本 ADR 的认证安排对应 Phase 4B；公网认证硬性门槛以 [`../quality/deployment.md`](../quality/deployment.md) 为唯一事实来源。
 
 ## 背景
 
@@ -11,14 +11,14 @@
 
 ## 决策
 
-Phase 1–3 的管理 API 不做身份认证，应用默认只监听 `127.0.0.1`。在 Phase 4 完成认证前，不得通过反向代理或防火墙向公网暴露管理接口。
+Phase 1–3 的管理 API 不做身份认证，应用默认只监听 `127.0.0.1`。公网暴露管理接口的认证门槛见 [`../quality/deployment.md`](../quality/deployment.md)（Phase 4B）。
 
 ## 备选方案
 
-- 在 Phase 1 引入最小 API Key / Basic 认证：提前实现 Phase 4 范围，增加当前阶段复杂度。
+- 在 Phase 1 引入最小 API Key / Basic 认证：提前实现 Phase 4B 范围，增加当前阶段复杂度。
 - 不做任何网络限制：与安全规范冲突。
 
 ## 后果
 
-- 部署阶段（Phase 5）必须在认证（Phase 4）之后进行。
+- 部署阶段（Phase 5）必须在认证（Phase 4B）之后进行。
 - 任何临时对外暴露都必须显式修改监听地址，并承担未认证风险。
