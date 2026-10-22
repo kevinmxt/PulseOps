@@ -25,6 +25,12 @@
 
 路径可随实现调整，但必须维护一致的 API 文档和测试。
 
+## 分页约定
+
+列表接口使用统一信封：`{items, page, size, totalElements}`。`page` 从 0 开始；`size` 默认 20，最大 100。
+
+`GET /api/v1/monitors/{id}/checks` 返回指定 Monitor 的 CheckResult，按 `started_at` 倒序；没有历史时返回空 `items` 和 `totalElements = 0`；Monitor 不存在时返回 404 和 `MONITOR_NOT_FOUND`。
+
 ## 安全约束
 - 管理接口必须执行认证和授权。
 - 心跳令牌独立于管理凭证。

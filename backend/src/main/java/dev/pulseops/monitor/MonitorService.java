@@ -1,6 +1,6 @@
 package dev.pulseops.monitor;
 
-import dev.pulseops.common.InvalidQueryException;
+import dev.pulseops.common.PageQueries;
 import dev.pulseops.monitor.config.MonitorConfig;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.config.MonitorConfigValidator;
@@ -18,8 +18,6 @@ import java.time.Instant;
 
 @Service
 public class MonitorService {
-
-    static final int MAX_PAGE_SIZE = 100;
 
     private final MonitorRepository repository;
     private final MonitorConfigValidator configValidator;
@@ -57,13 +55,7 @@ public class MonitorService {
 
     @Transactional(readOnly = true)
     public Page<MonitorEntity> list(int page, int size) {
-        if (page < 0) {
-            throw new InvalidQueryException("page must be zero or greater");
-        }
-        if (size < 1 || size > MAX_PAGE_SIZE) {
-            throw new InvalidQueryException("size must be between 1 and " + MAX_PAGE_SIZE);
-        }
-        PageRequest pageRequest = PageRequest.of(page, size,
+        PageRequest pageRequest = PageQueries.of(page, size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return repository.findAll(pageRequest);
     }

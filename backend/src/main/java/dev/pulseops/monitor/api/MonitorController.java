@@ -3,6 +3,8 @@ package dev.pulseops.monitor.api;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;
+import dev.pulseops.monitor.probe.CheckResultEntity;
+import dev.pulseops.monitor.probe.CheckResultQueryService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +28,11 @@ import java.util.List;
 public class MonitorController {
 
     private final MonitorService monitorService;
+    private final CheckResultQueryService checkResultQueryService;
 
-    public MonitorController(MonitorService monitorService) {
+    public MonitorController(MonitorService monitorService, CheckResultQueryService checkResultQueryService) {
         this.monitorService = monitorService;
+        this.checkResultQueryService = checkResultQueryService;
     }
 
     @PostMapping
@@ -55,6 +59,18 @@ public class MonitorController {
     @GetMapping("/{id}")
     public MonitorResponse get(@PathVariable Long id) {
         return MonitorResponse.from(monitorService.get(id));
+    }
+
+    @GetMapping("/{id}/checks")
+    public PageResponse<CheckResultResponse> checks(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<CheckResultEntity> result = checkResultQueryService.listByMonitor(id, page, size);
+        List<CheckResultResponse> items = result.getContent().stream()
+                .map(CheckResultResponse::from)
+                .toList();
+        return new PageResponse<>(items, page, size, result.getTotalElements());
     }
 
     @PutMapping("/{id}")
