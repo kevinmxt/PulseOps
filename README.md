@@ -18,7 +18,7 @@ compose.yaml    本地 PostgreSQL
 
 - JDK 21
 - Docker 与 Docker Compose（本地数据库、集成测试）
-- Node.js 20.19+ 或 22.12+ 与 npm
+- Node.js 24.15.0 与 npm（版本固定于 `frontend/.nvmrc`，可使用 `nvm use`）
 
 Maven 由 Maven Wrapper 提供，无需单独安装。
 
