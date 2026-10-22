@@ -33,7 +33,7 @@
 `GET /api/v1/monitors/{id}/checks` 返回指定 Monitor 的 CheckResult，按 `started_at` 倒序；没有历史时返回空 `items` 和 `totalElements = 0`；Monitor 不存在时返回 404 和 `MONITOR_NOT_FOUND`。
 
 ## 安全约束
-- 管理接口必须执行认证和授权。
+- 管理接口必须受认证和授权保护；Phase 4B 前仅允许回环地址访问，具体门槛见 [`../quality/deployment.md`](../quality/deployment.md) 与 [ADR-0003](../adr/0003-defer-admin-auth.md)。
 - 心跳令牌独立于管理凭证。
 - 不在响应或日志中暴露秘密。
 - `/actuator/health` 只返回必要的健康信息。

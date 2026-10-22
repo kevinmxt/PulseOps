@@ -8,9 +8,10 @@
 ## CI 证据
 
 - 工作流：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
-- 运行：[CI #39782251352](https://github.com/kevinmxt/PulseOps/actions/runs/39782251352)，结论 `success`
-- 提交：`3d44277bd39283ce5764223ed12215d0b0154be2`（PR [#17](https://github.com/kevinmxt/PulseOps/pull/17)）；rebase 合并后为 `ad2dfa3c4ba146947583012f0c484e276f23bb7c`
-- 环境：`pull_request` 触发的干净 checkout，`ubuntu-latest`，JDK 21（Temurin），Node.js 24.15.0
+- PR 运行：[GitHub Actions 39782251352](https://github.com/kevinmxt/PulseOps/actions/runs/39782251352)，`pull_request`，结论 `success`
+- 合并后运行：[GitHub Actions 39782515275](https://github.com/kevinmxt/PulseOps/actions/runs/39782515275)，`push` 到 master，结论 `success`
+- 提交：PR 运行的 head 为 `3d44277bd39283ce5764223ed12215d0b0154be2`（PR [#17](https://github.com/kevinmxt/PulseOps/pull/17)）；rebase 合并后为 `ad2dfa3c4ba146947583012f0c484e276f23bb7c`，由上述 master push 运行覆盖
+- 环境：干净 checkout，`ubuntu-latest`，JDK 21（Temurin），Node.js 24.15.0
 - 后端：[`./mvnw --batch-mode --no-transfer-progress verify`](https://github.com/kevinmxt/PulseOps/actions/runs/39782251352/job/119836201321)，单元测试 116 个、集成测试 101 个，0 失败，`BUILD SUCCESS`；集成测试使用 Testcontainers PostgreSQL 17
 - 前端：[`npm ci && npm run build`](https://github.com/kevinmxt/PulseOps/actions/runs/39782251352/job/119836201068)，生产构建通过
 
@@ -47,6 +48,14 @@ cd backend
 | 日志与 CheckResult/错误响应不泄露 Target URL、响应体 | `Phase1AcceptanceIT#logsAndCheckResultResponsesDoNotLeakTargetOrResponseBody` |
 | 错误响应不回显完整 Target URL | `MonitorApiIT#blockedTargetErrorDoesNotEchoRequestedUrl` |
 | 探测不发送请求体、Cookie，不读取响应体 | `ProbeServiceIT#sendsNoBodyAndNoCookies`、`#doesNotReadResponseBody` |
+
+## Phase 1.1 完成条件对照
+
+| 路线图完成条件 | 证据 |
+|---|---|
+| 配置变更竞态测试通过 | `MonitorConfigRaceIT`（CI 中 6 个测试通过） |
+| 执行期 SSRF 测试通过 | `ProbeSsrfIT`（CI 中 20 个测试通过） |
+| CI 在干净 checkout 中通过 | 本文件“CI 证据”中的 PR 运行与 master push 运行 |
 
 ## 已知限制与说明
 

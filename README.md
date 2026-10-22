@@ -90,7 +90,7 @@ cd frontend
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行相同命令；当前证据见 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm run build`；当前证据见 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 
