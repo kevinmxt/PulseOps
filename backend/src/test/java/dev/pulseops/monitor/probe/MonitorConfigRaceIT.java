@@ -303,7 +303,7 @@ class MonitorConfigRaceIT {
             MonitorEntity updated = monitorService.update(monitor.getId(),
                     input("method-change", "/a", "HEAD", 60, 3000, 10000, 200, 299, true));
             assertThat(updated.getConfigVersion()).isEqualTo(2);
-            assertThat(updated.getNextCheckAt()).isEqualTo(BASE_TIME);
+            assertThat(updated.getNextCheckAt()).isEqualTo(BASE_TIME.plusSeconds(30));
 
             aRelease.countDown();
 
@@ -312,7 +312,7 @@ class MonitorConfigRaceIT {
             MonitorEntity afterStale = monitorService.get(monitor.getId());
             assertThat(afterStale.getCurrentStatus()).isEqualTo(MonitorStatus.UNKNOWN);
             assertThat(afterStale.getLastCheckedAt()).isNull();
-            assertThat(afterStale.getNextCheckAt()).isEqualTo(BASE_TIME);
+            assertThat(afterStale.getNextCheckAt()).isEqualTo(BASE_TIME.plusSeconds(30));
         } finally {
             staleProbeThread.shutdownNow();
         }

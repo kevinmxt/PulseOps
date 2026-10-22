@@ -66,14 +66,12 @@ public class MonitorService {
         MonitorConfig config = configValidator.validate(input);
         validateTarget(config.targetUrl());
 
-        boolean probeSemanticsChanged = probeSemanticsChanged(monitor, config);
+        boolean semanticsChanged = probeSemanticsChanged(monitor, config);
         boolean becameEnabled = !monitor.isEnabled() && config.enabled();
-        boolean intervalChanged = monitor.getIntervalSeconds() != config.intervalSeconds();
-        boolean targetChanged = !monitor.getTargetUrl().equals(config.targetUrl().toString());
-        boolean needsImmediateCheck = becameEnabled || intervalChanged || targetChanged;
+        boolean needsImmediateCheck = becameEnabled || semanticsChanged;
 
         applyConfig(monitor, config);
-        if (probeSemanticsChanged) {
+        if (semanticsChanged) {
             monitor.incrementConfigVersion();
         }
         monitor.setUpdatedAt(clock.instant());

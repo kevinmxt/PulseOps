@@ -226,6 +226,77 @@ class ProbeSchedulerIT {
     }
 
     @Test
+    void immediatelyReschedulesAfterProbeSemanticChanges() {
+        MonitorEntity monitor = createMonitor("semantics", true, 60, "/ok");
+
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(1));
+        awaitIdle(monitor.getId());
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt())
+                .isEqualTo(BASE_TIME.plusSeconds(60));
+
+        monitorService.update(monitor.getId(),
+                config("semantics", true, 60, "/ok", "HEAD", 3000, 10000, 200, 299));
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(CLOCK.instant());
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(2));
+        awaitIdle(monitor.getId());
+
+        monitorService.update(monitor.getId(),
+                config("semantics", true, 60, "/ok", "HEAD", 3000, 10000, 201, 299));
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(CLOCK.instant());
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(3));
+        awaitIdle(monitor.getId());
+
+        monitorService.update(monitor.getId(),
+                config("semantics", true, 60, "/ok", "HEAD", 3000, 10000, 201, 204));
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(CLOCK.instant());
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(4));
+        awaitIdle(monitor.getId());
+
+        monitorService.update(monitor.getId(),
+                config("semantics", true, 60, "/ok", "HEAD", 4000, 10000, 201, 204));
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(CLOCK.instant());
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(5));
+        awaitIdle(monitor.getId());
+
+        monitorService.update(monitor.getId(),
+                config("semantics", true, 60, "/ok", "HEAD", 4000, 12000, 201, 204));
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(CLOCK.instant());
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(6));
+        awaitIdle(monitor.getId());
+    }
+
+    @Test
+    void doesNotRescheduleWhenOnlyNameChanges() {
+        MonitorEntity monitor = createMonitor("display-name", true, 60, "/ok");
+
+        probeScheduler.tick();
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(checkResultRepository.count()).isEqualTo(1));
+        awaitIdle(monitor.getId());
+        Instant scheduled = monitorService.get(monitor.getId()).getNextCheckAt();
+        assertThat(scheduled).isEqualTo(BASE_TIME.plusSeconds(60));
+
+        monitorService.update(monitor.getId(), config("renamed", true, 60, "/ok"));
+
+        assertThat(monitorService.get(monitor.getId()).getNextCheckAt()).isEqualTo(scheduled);
+        probeScheduler.tick();
+        sleep(300);
+        assertThat(checkResultRepository.count()).isEqualTo(1);
+    }
+
+    @Test
     void skipsDisabledMonitorAndResumesImmediatelyWhenReenabled() {
         MonitorEntity monitor = createMonitor("toggle", true, 60, "/ok");
 
@@ -411,16 +482,27 @@ class ProbeSchedulerIT {
     }
 
     private MonitorConfigInput config(String name, boolean enabled, int intervalSeconds, String path) {
+        return config(name, enabled, intervalSeconds, path, "GET", 3000, 10000, 200, 299);
+    }
+
+    private MonitorConfigInput config(String name, boolean enabled, int intervalSeconds, String path,
+                                      String method, int connectTimeoutMs, int responseTimeoutMs,
+                                      int expectedStatusMin, int expectedStatusMax) {
         return new MonitorConfigInput(
                 name,
                 "http://127.0.0.1:" + port + path,
-                "GET",
+                method,
                 intervalSeconds,
-                3000,
-                10000,
-                200,
-                299,
+                connectTimeoutMs,
+                responseTimeoutMs,
+                expectedStatusMin,
+                expectedStatusMax,
                 enabled);
+    }
+
+    private void awaitIdle(Long monitorId) {
+        awaitUntil(Duration.ofSeconds(5), () ->
+                assertThat(probeScheduler.isInFlight(monitorId)).isFalse());
     }
 
     private CheckResultEntity latestResult() {
