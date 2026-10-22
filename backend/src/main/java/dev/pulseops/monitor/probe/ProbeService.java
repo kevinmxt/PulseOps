@@ -36,28 +36,27 @@ public class ProbeService {
         if (!monitor.isEnabled()) {
             throw new MonitorDisabledException(monitorId);
         }
+        ProbeSnapshot snapshot = new ProbeSnapshot(monitorId, monitor.getConfigVersion(),
+                monitor.getIntervalSeconds());
         ProbeOutcome outcome = executor.execute(monitor);
-        return transactionTemplate.execute(status -> persist(monitorId, outcome));
+        return transactionTemplate.execute(status -> persist(snapshot, outcome));
     }
 
-    private Optional<CheckResultEntity> persist(Long monitorId, ProbeOutcome outcome) {
-        MonitorEntity monitor = monitorRepository.findById(monitorId).orElse(null);
-        if (monitor == null) {
-            return Optional.empty();
-        }
-        Instant nextCheckAt = outcome.finishedAt().plusSeconds(monitor.getIntervalSeconds());
+    private Optional<CheckResultEntity> persist(ProbeSnapshot snapshot, ProbeOutcome outcome) {
+        Instant nextCheckAt = outcome.finishedAt().plusSeconds(snapshot.intervalSeconds());
         MonitorStatus status = outcome.success() ? MonitorStatus.UP : MonitorStatus.DOWN;
         Instant successAt = outcome.success() ? outcome.finishedAt() : null;
 
         int updated = monitorRepository.updateProbeStatus(
-                monitorId, status, outcome.finishedAt(), successAt, nextCheckAt);
+                snapshot.monitorId(), snapshot.configVersion(), status,
+                outcome.finishedAt(), successAt, nextCheckAt);
         if (updated == 0) {
-            // The monitor was deleted while the probe was in flight; discard the result.
+            // The monitor was deleted or reconfigured while the probe was in flight.
             return Optional.empty();
         }
 
         CheckResultEntity result = new CheckResultEntity();
-        result.setMonitorId(monitorId);
+        result.setMonitorId(snapshot.monitorId());
         result.setStartedAt(outcome.startedAt());
         result.setFinishedAt(outcome.finishedAt());
         result.setDurationMs(outcome.durationMs());
@@ -66,5 +65,8 @@ public class ProbeService {
         result.setHttpStatusCode(outcome.httpStatusCode());
         result.setErrorSummary(outcome.errorSummary());
         return Optional.of(checkResultRepository.save(result));
+    }
+
+    private record ProbeSnapshot(Long monitorId, long configVersion, int intervalSeconds) {
     }
 }

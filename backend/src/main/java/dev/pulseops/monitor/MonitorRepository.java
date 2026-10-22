@@ -28,8 +28,10 @@ public interface MonitorRepository extends JpaRepository<MonitorEntity, Long> {
                 m.lastSuccessAt = coalesce(:successAt, m.lastSuccessAt),
                 m.nextCheckAt = :nextCheckAt
             where m.id = :id
+              and m.configVersion = :expectedVersion
             """)
     int updateProbeStatus(@Param("id") Long id,
+                          @Param("expectedVersion") long expectedVersion,
                           @Param("status") MonitorStatus status,
                           @Param("checkedAt") Instant checkedAt,
                           @Param("successAt") Instant successAt,

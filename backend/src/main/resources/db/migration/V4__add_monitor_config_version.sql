@@ -1,0 +1,2 @@
+ALTER TABLE monitor
+    ADD COLUMN config_version BIGINT NOT NULL DEFAULT 1;

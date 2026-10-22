@@ -66,12 +66,16 @@ public class MonitorService {
         MonitorConfig config = configValidator.validate(input);
         validateTarget(config.targetUrl());
 
+        boolean probeSemanticsChanged = probeSemanticsChanged(monitor, config);
         boolean becameEnabled = !monitor.isEnabled() && config.enabled();
         boolean intervalChanged = monitor.getIntervalSeconds() != config.intervalSeconds();
         boolean targetChanged = !monitor.getTargetUrl().equals(config.targetUrl().toString());
         boolean needsImmediateCheck = becameEnabled || intervalChanged || targetChanged;
 
         applyConfig(monitor, config);
+        if (probeSemanticsChanged) {
+            monitor.incrementConfigVersion();
+        }
         monitor.setUpdatedAt(clock.instant());
         if (needsImmediateCheck) {
             monitor.setNextCheckAt(monitor.getUpdatedAt());
@@ -92,6 +96,16 @@ public class MonitorService {
             // Specified behaviour: a temporary DNS failure must not block saving.
             // The Probe re-validates the address and classifies the failure.
         }
+    }
+
+    private static boolean probeSemanticsChanged(MonitorEntity monitor, MonitorConfig config) {
+        return !monitor.getTargetUrl().equals(config.targetUrl().toString())
+                || monitor.getMethod() != config.method()
+                || monitor.getIntervalSeconds() != config.intervalSeconds()
+                || monitor.getConnectTimeoutMs() != config.connectTimeoutMs()
+                || monitor.getResponseTimeoutMs() != config.responseTimeoutMs()
+                || monitor.getExpectedStatusMin() != config.expectedStatusMin()
+                || monitor.getExpectedStatusMax() != config.expectedStatusMax();
     }
 
     private static void applyConfig(MonitorEntity monitor, MonitorConfig config) {

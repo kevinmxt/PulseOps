@@ -65,6 +65,9 @@ public class MonitorEntity {
     @Column(name = "next_check_at", nullable = false)
     private Instant nextCheckAt;
 
+    @Column(name = "config_version", nullable = false)
+    private long configVersion = 1;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -185,6 +188,14 @@ public class MonitorEntity {
 
     public void setNextCheckAt(Instant nextCheckAt) {
         this.nextCheckAt = nextCheckAt;
+    }
+
+    public long getConfigVersion() {
+        return configVersion;
+    }
+
+    void incrementConfigVersion() {
+        configVersion++;
     }
 
     public Instant getCreatedAt() {

@@ -21,8 +21,11 @@
 - `last_checked_at`
 - `last_success_at`
 - `next_check_at`：内部调度字段，不对外暴露
+- `config_version`：内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled` 不计入版本。
 - `created_at`
 - `updated_at`
+
+`config_version` 用于探测结果写回时的条件校验；行为规范见 `specs/monitoring.md`。
 
 Phase 2 加入 `failure_threshold`、`recovery_threshold`；Phase 3 加入 `heartbeat_grace_seconds`。各阶段迁移只创建该阶段需要的列。
 
