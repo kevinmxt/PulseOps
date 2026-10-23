@@ -63,7 +63,7 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 - `failure_type`
 - `summary`
 
-同一监控项原则上最多有一个未解决的当前 Incident。通过事务、唯一约束或等效并发控制保证一致性。
+同一监控项最多有一个未解决的当前 Incident，由部分唯一索引与探测写回的行锁保证。`status` 取 `OPEN` 或 `RESOLVED`；恢复时写入 `resolved_at`。禁用 Monitor 时静默关闭未解决 Incident，删除时级联删除。
 
 ## HeartbeatCredential
 - `id`

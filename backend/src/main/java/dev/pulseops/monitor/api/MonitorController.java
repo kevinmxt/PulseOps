@@ -1,5 +1,6 @@
 package dev.pulseops.monitor.api;
 
+import dev.pulseops.common.PageResponse;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;

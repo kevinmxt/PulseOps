@@ -18,11 +18,16 @@
 
 阈值是 MVP 默认值，不代表永远固定。配置更新时必须定义何时生效。
 
+## Incident 生命周期
+- 创建条件：失败计数达到 Failure Threshold，且该 Monitor 当前没有未解决 Incident；不依赖 `UP → DOWN` 的状态迁移，因此上线前已是 `DOWN` 的 Monitor 也能在后续失败达到阈值时创建。
+- 禁用 Monitor 时关闭未解决 Incident，但不发送恢复通知；删除 Monitor 时级联删除其 Incident。
+- 探测语义配置变更只清零计数，不关闭未解决 Incident。
+
 ## Heartbeat 规则
 Heartbeat 使用最后一次有效心跳、预期间隔和宽限时间判断超时，不直接复用 HTTP 连续失败计数。
 
 ## 一致性与并发
-- 同一监控项原则上最多有一个未解决 Incident。
+- 同一监控项最多有一个未解决 Incident，由部分唯一索引和探测写回的行锁保证。
 - 使用事务、唯一约束或等效并发控制保证不变量。
 - 状态变更和 Incident 更新应保持一致。
 - 通知失败不能回滚已确认的故障状态。

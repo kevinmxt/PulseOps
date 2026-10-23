@@ -34,6 +34,8 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 `GET /api/v1/monitors/{id}/checks` 返回指定 Monitor 的 CheckResult，按 `started_at` 倒序；没有历史时返回空 `items` 和 `totalElements = 0`；Monitor 不存在时返回 404 和 `MONITOR_NOT_FOUND`。
 
+`GET /api/v1/incidents` 支持 `status`（`OPEN` / `RESOLVED`）与 `monitor_id` 过滤，按 `started_at` 倒序；非法 `status` 返回 400 和 `VALIDATION_ERROR`。`GET /api/v1/incidents/{id}` 返回 `monitorId`、`monitorName`、`startedAt`、`resolvedAt`、`status`、`failureType` 与 `summary`；不存在时返回 404 和 `INCIDENT_NOT_FOUND`。
+
 ## 安全约束
 - 管理接口必须受认证和授权保护；Phase 4B 前仅允许回环地址访问，具体门槛见 [`../quality/deployment.md`](../quality/deployment.md) 与 [ADR-0003](../adr/0003-defer-admin-auth.md)。
 - 心跳令牌独立于管理凭证。

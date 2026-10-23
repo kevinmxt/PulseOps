@@ -1,4 +1,4 @@
-package dev.pulseops.monitor.api;
+package dev.pulseops.common;
 
 import java.util.List;
 
