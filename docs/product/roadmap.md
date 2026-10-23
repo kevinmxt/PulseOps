@@ -47,7 +47,7 @@ Phase 1.1 已完成（CI 与验收证据见 [`quality/phase1-acceptance.md`](../
 - [x] 连续成功恢复阈值
 - [x] Incident 创建、去重和恢复
 - [x] Telegram 通知
-- [ ] 通知状态、有限重试和日志
+- [x] 通知状态、有限重试和日志
 
 完成条件：不会为同一持续故障重复创建 Incident；通知故障不阻塞探测；恢复事件正确关闭。
 

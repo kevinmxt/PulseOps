@@ -19,9 +19,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -39,6 +42,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -53,9 +57,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         "pulseops.probe.scheduling-enabled=false",
         "pulseops.notification.scheduling-enabled=false",
         "pulseops.telegram.bot-token=test-token",
-        "pulseops.telegram.chat-id=test-chat"
+        "pulseops.telegram.chat-id=test-chat",
+        "logging.level.dev.pulseops.notification.NotificationDispatcher=DEBUG"
 })
 @Testcontainers
+@ExtendWith(OutputCaptureExtension.class)
 @Import(NotificationFlowIT.NotificationTestConfiguration.class)
 class NotificationFlowIT {
 
@@ -67,7 +73,7 @@ class NotificationFlowIT {
     private static final List<RecordedRequest> TELEGRAM_REQUESTS = new CopyOnWriteArrayList<>();
 
     private static volatile boolean failing;
-    private static volatile boolean telegramFailing;
+    private static volatile int telegramStatus = 200;
 
     @Container
     @ServiceConnection
@@ -148,8 +154,8 @@ class NotificationFlowIT {
                     TELEGRAM_REQUESTS.add(new RecordedRequest(
                             exchange.getRequestURI().getPath(),
                             new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
-                    respond(exchange, telegramFailing ? 500 : 200,
-                            telegramFailing ? "failure" : "{\"ok\":true}");
+                    respond(exchange, telegramStatus,
+                            telegramStatus == 200 ? "{\"ok\":true}" : "failure");
                 } else {
                     respond(exchange, 404, "not found");
                 }
@@ -176,7 +182,7 @@ class NotificationFlowIT {
         TELEGRAM_REQUESTS.clear();
         CLOCK.reset();
         failing = false;
-        telegramFailing = false;
+        telegramStatus = 200;
     }
 
     @Test
@@ -297,13 +303,103 @@ class NotificationFlowIT {
     }
 
     @Test
-    void sendingFailureMarksDeliveryFailedWithoutChangingIncident() {
+    void retriesServerErrorsWithBackoffBeforeFailing(CapturedOutput output) {
         MonitorEntity monitor = createMonitor();
         failing = true;
         probe(monitor);
         probe(monitor);
         probe(monitor);
-        telegramFailing = true;
+        telegramStatus = 500;
+        double failedBefore = meterRegistry.counter("notification.failed").count();
+
+        notificationDispatcher.dispatchDue();
+        NotificationDeliveryEntity firstAttempt = onlyDelivery();
+        assertThat(firstAttempt.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        assertThat(firstAttempt.getAttemptCount()).isEqualTo(1);
+        assertThat(firstAttempt.getNextAttemptAt()).isEqualTo(BASE_TIME.plusSeconds(60));
+
+        CLOCK.advance(Duration.ofSeconds(30));
+        notificationDispatcher.dispatchDue();
+        assertThat(onlyDelivery().getAttemptCount()).isEqualTo(1);
+        assertThat(meterRegistry.counter("notification.failed").count()).isEqualTo(failedBefore);
+
+        CLOCK.advance(Duration.ofSeconds(30));
+        notificationDispatcher.dispatchDue();
+        NotificationDeliveryEntity secondAttempt = onlyDelivery();
+        assertThat(secondAttempt.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        assertThat(secondAttempt.getAttemptCount()).isEqualTo(2);
+        assertThat(secondAttempt.getNextAttemptAt()).isEqualTo(BASE_TIME.plusSeconds(360));
+        assertThat(meterRegistry.counter("notification.failed").count()).isEqualTo(failedBefore);
+
+        CLOCK.advance(Duration.ofMinutes(5));
+        notificationDispatcher.dispatchDue();
+        NotificationDeliveryEntity failed = onlyDelivery();
+        assertThat(failed.getStatus()).isEqualTo(NotificationDeliveryStatus.FAILED);
+        assertThat(failed.getAttemptCount()).isEqualTo(3);
+        assertThat(failed.getLastErrorSummary())
+                .contains("HTTP 500")
+                .doesNotContain("test-token");
+        assertThat(meterRegistry.counter("notification.failed").count()).isEqualTo(failedBefore + 1);
+
+        int requestsAfterFailure = TELEGRAM_REQUESTS.size();
+        CLOCK.advance(Duration.ofHours(1));
+        notificationDispatcher.dispatchDue();
+        assertThat(onlyDelivery().getAttemptCount()).isEqualTo(3);
+        assertThat(TELEGRAM_REQUESTS).hasSize(requestsAfterFailure);
+
+        assertThat(output.getOut())
+                .containsPattern("DEBUG.*Notification retry scheduled")
+                .containsPattern("WARN.*Notification delivery failed")
+                .doesNotContain("test-token");
+    }
+
+    @Test
+    void deliversAfterTransientFailure() {
+        MonitorEntity monitor = createMonitor();
+        failing = true;
+        probe(monitor);
+        probe(monitor);
+        probe(monitor);
+        telegramStatus = 500;
+        notificationDispatcher.dispatchDue();
+        assertThat(onlyDelivery().getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+
+        telegramStatus = 200;
+        CLOCK.advance(Duration.ofMinutes(1));
+        notificationDispatcher.dispatchDue();
+
+        NotificationDeliveryEntity delivery = onlyDelivery();
+        assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.SENT);
+        assertThat(delivery.getAttemptCount()).isEqualTo(2);
+        assertThat(delivery.getSentAt()).isEqualTo(CLOCK.instant());
+        assertThat(TELEGRAM_REQUESTS).hasSize(2);
+    }
+
+    @Test
+    void retriesRateLimiting() {
+        MonitorEntity monitor = createMonitor();
+        failing = true;
+        probe(monitor);
+        probe(monitor);
+        probe(monitor);
+        telegramStatus = 429;
+
+        notificationDispatcher.dispatchDue();
+
+        NotificationDeliveryEntity delivery = onlyDelivery();
+        assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        assertThat(delivery.getAttemptCount()).isEqualTo(1);
+        assertThat(delivery.getNextAttemptAt()).isEqualTo(BASE_TIME.plusSeconds(60));
+    }
+
+    @Test
+    void clientErrorMarksDeliveryFailedWithoutChangingIncident() {
+        MonitorEntity monitor = createMonitor();
+        failing = true;
+        probe(monitor);
+        probe(monitor);
+        probe(monitor);
+        telegramStatus = 400;
         double failedBefore = meterRegistry.counter("notification.failed").count();
 
         notificationDispatcher.dispatchDue();
@@ -313,7 +409,7 @@ class NotificationFlowIT {
         assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.FAILED);
         assertThat(delivery.getAttemptCount()).isEqualTo(1);
         assertThat(delivery.getLastErrorSummary())
-                .contains("HTTP 500")
+                .contains("HTTP 400")
                 .doesNotContain("test-token");
         assertThat(incidentRepository.findAll().getFirst().getStatus())
                 .isEqualTo(dev.pulseops.incident.IncidentStatus.OPEN);

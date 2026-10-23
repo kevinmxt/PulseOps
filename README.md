@@ -92,6 +92,8 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
 投递与探测使用同一调度线程池但各自独立的调度任务，线程池大小固定为 2（`spring.task.scheduling.pool.size`），避免通知发送阻塞探测 tick。
 
+失败重试：网络错误、5xx 与 429 最多尝试 3 次，退避 1 分钟与 5 分钟；非 429 的 4xx 直接进入 `FAILED`。重启后只续发 `PENDING` 投递，已发送的不会重发。
+
 ## 测试与构建
 
 ```bash
