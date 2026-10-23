@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -19,6 +20,9 @@ public class NotificationDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationDispatcher.class);
     private static final int ERROR_SUMMARY_MAX_LENGTH = 500;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final Duration FIRST_RETRY_DELAY = Duration.ofMinutes(1);
+    private static final Duration SECOND_RETRY_DELAY = Duration.ofMinutes(5);
 
     private final NotificationDeliveryRepository deliveryRepository;
     private final IncidentRepository incidentRepository;
@@ -59,19 +63,36 @@ public class NotificationDispatcher {
         delivery.recordAttempt(clock.instant());
         try {
             IncidentEntity incident = incidentRepository.findById(delivery.getIncidentId())
-                    .orElseThrow(() -> new NotificationSendException("Incident no longer exists"));
+                    .orElseThrow(() -> new NotificationSendException("Incident no longer exists", false));
             MonitorEntity monitor = monitorRepository.findById(incident.getMonitorId())
-                    .orElseThrow(() -> new NotificationSendException("Monitor no longer exists"));
+                    .orElseThrow(() -> new NotificationSendException("Monitor no longer exists", false));
             sender.send(messageFormatter.format(delivery.getEventType(), incident, monitor));
             delivery.markSent(clock.instant());
             meterRegistry.counter("notification.sent").increment();
+        } catch (NotificationSendException failure) {
+            handleFailure(delivery, failure.getMessage(), failure.isRetryable());
         } catch (RuntimeException failure) {
-            delivery.markFailed(truncate(sender.sanitize(failure.getMessage())));
-            meterRegistry.counter("notification.failed").increment();
-            log.warn("Notification delivery failed, deliveryId={}, channel={}, attemptCount={}",
-                    delivery.getId(), delivery.getChannel(), delivery.getAttemptCount());
+            handleFailure(delivery, failure.getMessage(), false);
         }
         deliveryRepository.save(delivery);
+    }
+
+    private void handleFailure(NotificationDeliveryEntity delivery, String message,
+                               boolean retryable) {
+        if (retryable && delivery.getAttemptCount() < MAX_ATTEMPTS) {
+            Duration delay = delivery.getAttemptCount() == 1
+                    ? FIRST_RETRY_DELAY
+                    : SECOND_RETRY_DELAY;
+            delivery.scheduleRetry(clock.instant().plus(delay));
+            log.debug("Notification retry scheduled, deliveryId={}, attemptCount={}, nextAttemptAt={}",
+                    delivery.getId(), delivery.getAttemptCount(), delivery.getNextAttemptAt());
+            return;
+        }
+
+        delivery.markFailed(truncate(sender.sanitize(message)));
+        meterRegistry.counter("notification.failed").increment();
+        log.warn("Notification delivery failed, deliveryId={}, channel={}, attemptCount={}",
+                delivery.getId(), delivery.getChannel(), delivery.getAttemptCount());
     }
 
     private static String truncate(String summary) {

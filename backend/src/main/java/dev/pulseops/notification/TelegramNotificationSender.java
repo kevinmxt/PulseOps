@@ -36,7 +36,7 @@ public class TelegramNotificationSender {
 
     public void send(String text) {
         if (!properties.isConfigured()) {
-            throw new NotificationSendException("Telegram channel is not configured");
+            throw new NotificationSendException("Telegram channel is not configured", false);
         }
 
         String payload;
@@ -45,7 +45,7 @@ public class TelegramNotificationSender {
                     "chat_id", properties.chatId(),
                     "text", text));
         } catch (JsonProcessingException e) {
-            throw new NotificationSendException("Failed to build Telegram request");
+            throw new NotificationSendException("Failed to build Telegram request", false);
         }
 
         HttpPost request = new HttpPost(
@@ -61,11 +61,12 @@ public class TelegramNotificationSender {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             int status = response.getCode();
             if (status < 200 || status >= 300) {
-                throw new NotificationSendException("Telegram returned HTTP " + status);
+                boolean retryable = status == 429 || status >= 500;
+                throw new NotificationSendException("Telegram returned HTTP " + status, retryable);
             }
         } catch (IOException e) {
             throw new NotificationSendException(
-                    "Telegram request failed: " + e.getClass().getSimpleName(), e);
+                    "Telegram request failed: " + e.getClass().getSimpleName(), true, e);
         }
     }
 

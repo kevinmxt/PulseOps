@@ -2,11 +2,19 @@ package dev.pulseops.notification;
 
 public class NotificationSendException extends RuntimeException {
 
-    public NotificationSendException(String message) {
+    private final boolean retryable;
+
+    public NotificationSendException(String message, boolean retryable) {
         super(message);
+        this.retryable = retryable;
     }
 
-    public NotificationSendException(String message, Throwable cause) {
+    public NotificationSendException(String message, boolean retryable, Throwable cause) {
         super(message, cause);
+        this.retryable = retryable;
+    }
+
+    public boolean isRetryable() {
+        return retryable;
     }
 }
