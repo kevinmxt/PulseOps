@@ -2,7 +2,7 @@
 
 面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任务心跳监控平台。
 
-项目当前处于 **Phase 1.1 已完成、下一阶段 Phase 2：Incident 与通知**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)。
+项目当前处于 **Phase 2 已完成、下一阶段 Phase 3：Heartbeat**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)。
 
 ## 目录结构
 
@@ -107,7 +107,7 @@ cd frontend
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm run build`；当前证据见 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm run build`；当前阶段证据见 [`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md)，历史证据见 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 

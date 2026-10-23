@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 1.1 已完成（CI 与验收证据见 [`quality/phase1-acceptance.md`](../quality/phase1-acceptance.md)）；下一阶段为 Phase 2 — Incident 与通知。
+Phase 2 已完成（CI 与验收证据见 [`quality/phase2-acceptance.md`](../quality/phase2-acceptance.md)）；下一阶段为 Phase 3 — Heartbeat。
 
 ## 阶段顺序
 
@@ -49,7 +49,7 @@ Phase 1.1 已完成（CI 与验收证据见 [`quality/phase1-acceptance.md`](../
 - [x] Telegram 通知
 - [x] 通知状态、有限重试和日志
 
-完成条件：不会为同一持续故障重复创建 Incident；通知故障不阻塞探测；恢复事件正确关闭。
+完成条件：不会为同一持续故障重复创建 Incident；通知故障不阻塞探测；恢复事件正确关闭。完成证据见 [`quality/phase2-acceptance.md`](../quality/phase2-acceptance.md)。
 
 ### Phase 3：Heartbeat
 - [ ] 心跳监控项

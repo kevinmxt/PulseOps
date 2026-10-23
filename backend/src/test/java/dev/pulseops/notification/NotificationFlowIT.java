@@ -48,8 +48,11 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,6 +77,9 @@ class NotificationFlowIT {
 
     private static volatile boolean failing;
     private static volatile int telegramStatus = 200;
+    private static volatile boolean telegramBlocks;
+    private static volatile CountDownLatch telegramRequestStarted = new CountDownLatch(1);
+    private static volatile CountDownLatch releaseTelegramRequest = new CountDownLatch(1);
 
     @Container
     @ServiceConnection
@@ -154,6 +160,10 @@ class NotificationFlowIT {
                     TELEGRAM_REQUESTS.add(new RecordedRequest(
                             exchange.getRequestURI().getPath(),
                             new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+                    if (telegramBlocks) {
+                        telegramRequestStarted.countDown();
+                        awaitQuietly(releaseTelegramRequest);
+                    }
                     respond(exchange, telegramStatus,
                             telegramStatus == 200 ? "{\"ok\":true}" : "failure");
                 } else {
@@ -183,6 +193,9 @@ class NotificationFlowIT {
         CLOCK.reset();
         failing = false;
         telegramStatus = 200;
+        telegramBlocks = false;
+        telegramRequestStarted = new CountDownLatch(1);
+        releaseTelegramRequest = new CountDownLatch(1);
     }
 
     @Test
@@ -295,6 +308,34 @@ class NotificationFlowIT {
         assertThat(notificationDeliveryRepository.countByStatus(NotificationDeliveryStatus.SENT))
                 .isEqualTo(60);
         assertThat(TELEGRAM_REQUESTS).hasSize(60);
+    }
+
+    @Test
+    void failingNotificationDoesNotBlockProbeExecution() throws Exception {
+        MonitorEntity monitor = createMonitor();
+        failing = true;
+        probe(monitor);
+        probe(monitor);
+        probe(monitor);
+        telegramStatus = 500;
+        telegramBlocks = true;
+
+        ExecutorService dispatcherThread = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> dispatch = dispatcherThread.submit(notificationDispatcher::dispatchDue);
+            assertThat(telegramRequestStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            probe(monitor);
+            assertThat(checkResultRepository.count()).isEqualTo(4);
+
+            releaseTelegramRequest.countDown();
+            dispatch.get(10, TimeUnit.SECONDS);
+        } finally {
+            releaseTelegramRequest.countDown();
+            dispatcherThread.shutdownNow();
+        }
+
+        assertThat(onlyDelivery().getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
     }
 
     @Test
@@ -478,6 +519,14 @@ class NotificationFlowIT {
                 enabled,
                 null,
                 null));
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static void respond(HttpExchange exchange, int status, String body) {
