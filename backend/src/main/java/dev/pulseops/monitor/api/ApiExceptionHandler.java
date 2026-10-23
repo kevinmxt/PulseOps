@@ -2,6 +2,7 @@ package dev.pulseops.monitor.api;
 
 import dev.pulseops.common.InvalidQueryException;
 import dev.pulseops.common.TraceIdFilter;
+import dev.pulseops.incident.IncidentNotFoundException;
 import dev.pulseops.monitor.MonitorNotFoundException;
 import dev.pulseops.monitor.config.InvalidMonitorConfigException;
 import dev.pulseops.monitor.target.BlockedTargetException;
@@ -28,6 +29,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleMonitorNotFound(MonitorNotFoundException ex,
                                                                   HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "MONITOR_NOT_FOUND", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(IncidentNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleIncidentNotFound(IncidentNotFoundException ex,
+                                                                   HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "INCIDENT_NOT_FOUND", ex.getMessage(), request);
     }
 
     @ExceptionHandler(InvalidMonitorConfigException.class)

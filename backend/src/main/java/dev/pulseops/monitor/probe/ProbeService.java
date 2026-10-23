@@ -1,5 +1,6 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.incident.IncidentService;
 import dev.pulseops.monitor.MonitorDisabledException;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorNotFoundException;
@@ -16,15 +17,18 @@ public class ProbeService {
     private final MonitorRepository monitorRepository;
     private final CheckResultRepository checkResultRepository;
     private final HttpProbeExecutor executor;
+    private final IncidentService incidentService;
     private final TransactionTemplate transactionTemplate;
 
     public ProbeService(MonitorRepository monitorRepository,
                         CheckResultRepository checkResultRepository,
                         HttpProbeExecutor executor,
+                        IncidentService incidentService,
                         PlatformTransactionManager transactionManager) {
         this.monitorRepository = monitorRepository;
         this.checkResultRepository = checkResultRepository;
         this.executor = executor;
+        this.incidentService = incidentService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -54,6 +58,7 @@ public class ProbeService {
             monitor.setLastSuccessAt(outcome.finishedAt());
         }
         monitor.setNextCheckAt(outcome.finishedAt().plusSeconds(snapshot.intervalSeconds()));
+        incidentService.evaluate(monitor, outcome);
 
         CheckResultEntity result = new CheckResultEntity();
         result.setMonitorId(snapshot.monitorId());

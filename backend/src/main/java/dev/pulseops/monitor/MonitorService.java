@@ -1,6 +1,7 @@
 package dev.pulseops.monitor;
 
 import dev.pulseops.common.PageQueries;
+import dev.pulseops.incident.IncidentService;
 import dev.pulseops.monitor.config.MonitorConfig;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.config.MonitorConfigValidator;
@@ -22,13 +23,15 @@ public class MonitorService {
     private final MonitorRepository repository;
     private final MonitorConfigValidator configValidator;
     private final TargetPolicy targetPolicy;
+    private final IncidentService incidentService;
     private final Clock clock;
 
     public MonitorService(MonitorRepository repository, MonitorConfigValidator configValidator,
-                          TargetPolicy targetPolicy, Clock clock) {
+                          TargetPolicy targetPolicy, IncidentService incidentService, Clock clock) {
         this.repository = repository;
         this.configValidator = configValidator;
         this.targetPolicy = targetPolicy;
+        this.incidentService = incidentService;
         this.clock = clock;
     }
 
@@ -83,6 +86,7 @@ public class MonitorService {
             monitor.resetConsecutiveCounters();
         } else if (becameDisabled) {
             monitor.resetConsecutiveCounters();
+            incidentService.closeOpenIncident(monitor.getId(), clock.instant());
         }
         monitor.setUpdatedAt(clock.instant());
         if (needsImmediateCheck) {
