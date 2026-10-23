@@ -18,6 +18,10 @@ public class MonitorConfigValidator {
     static final int RESPONSE_TIMEOUT_MAX_MS = 30000;
     static final int STATUS_MIN = 100;
     static final int STATUS_MAX = 599;
+    static final int THRESHOLD_MIN = 1;
+    static final int THRESHOLD_MAX = 10;
+    static final int DEFAULT_FAILURE_THRESHOLD = 3;
+    static final int DEFAULT_RECOVERY_THRESHOLD = 2;
     static final int DEFAULT_INTERVAL_SECONDS = 60;
     static final int DEFAULT_CONNECT_TIMEOUT_MS = 3000;
     static final int DEFAULT_RESPONSE_TIMEOUT_MS = 10000;
@@ -42,10 +46,15 @@ public class MonitorConfigValidator {
             throw InvalidMonitorConfigException.validation("expectedStatusMin",
                     "must not be greater than expectedStatusMax");
         }
+        int failureThreshold = valueOrDefault(input.failureThreshold(), DEFAULT_FAILURE_THRESHOLD);
+        requireRange("failureThreshold", failureThreshold, THRESHOLD_MIN, THRESHOLD_MAX);
+        int recoveryThreshold = valueOrDefault(input.recoveryThreshold(), DEFAULT_RECOVERY_THRESHOLD);
+        requireRange("recoveryThreshold", recoveryThreshold, THRESHOLD_MIN, THRESHOLD_MAX);
         boolean enabled = input.enabled() == null || input.enabled();
 
         return new MonitorConfig(name, targetUrl, method, interval, connectTimeout,
-                responseTimeout, expectedMin, expectedMax, enabled);
+                responseTimeout, expectedMin, expectedMax, enabled,
+                failureThreshold, recoveryThreshold);
     }
 
     private String validateName(String raw) {

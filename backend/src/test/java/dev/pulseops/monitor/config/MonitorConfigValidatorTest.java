@@ -22,6 +22,8 @@ class MonitorConfigValidatorTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null));
 
         assertThat(config.name()).isEqualTo("My API");
@@ -33,6 +35,8 @@ class MonitorConfigValidatorTest {
         assertThat(config.expectedStatusMin()).isEqualTo(200);
         assertThat(config.expectedStatusMax()).isEqualTo(299);
         assertThat(config.enabled()).isTrue();
+        assertThat(config.failureThreshold()).isEqualTo(3);
+        assertThat(config.recoveryThreshold()).isEqualTo(2);
     }
 
     @ParameterizedTest
@@ -51,7 +55,7 @@ class MonitorConfigValidatorTest {
     void rejectsOverlongNameAndUrl() {
         String longName = "x".repeat(101);
         assertInvalid("name", new MonitorConfigInput(
-                longName, "https://example.com", null, null, null, null, null, null, null));
+                longName, "https://example.com", null, null, null, null, null, null, null, null, null));
 
         String longUrl = "https://example.com/" + "a".repeat(2048);
         assertInvalid("targetUrl", inputWithTarget(longUrl));
@@ -60,7 +64,7 @@ class MonitorConfigValidatorTest {
     @Test
     void rejectsUnsupportedMethod() {
         MonitorConfigInput input = new MonitorConfigInput(
-                "API", "https://example.com", "POST", null, null, null, null, null, null);
+                "API", "https://example.com", "POST", null, null, null, null, null, null, null, null);
 
         assertInvalid("method", input);
     }
@@ -74,18 +78,34 @@ class MonitorConfigValidatorTest {
     @Test
     void rejectsOutOfRangeTimeouts() {
         MonitorConfigInput connect = new MonitorConfigInput(
-                "API", "https://example.com", null, null, 999, null, null, null, null);
+                "API", "https://example.com", null, null, 999, null, null, null, null, null, null);
         assertInvalid("connectTimeoutMs", connect);
 
         MonitorConfigInput response = new MonitorConfigInput(
-                "API", "https://example.com", null, null, null, 30001, null, null, null);
+                "API", "https://example.com", null, null, null, 30001, null, null, null, null, null);
         assertInvalid("responseTimeoutMs", response);
+    }
+
+    @Test
+    void rejectsOutOfRangeThresholds() {
+        assertInvalid("failureThreshold", inputWithThresholds(0, null));
+        assertInvalid("failureThreshold", inputWithThresholds(11, null));
+        assertInvalid("recoveryThreshold", inputWithThresholds(null, 0));
+        assertInvalid("recoveryThreshold", inputWithThresholds(null, 11));
+    }
+
+    @Test
+    void acceptsThresholdsAtTheBoundaries() {
+        MonitorConfig config = validator.validate(inputWithThresholds(1, 10));
+
+        assertThat(config.failureThreshold()).isEqualTo(1);
+        assertThat(config.recoveryThreshold()).isEqualTo(10);
     }
 
     @Test
     void rejectsInvertedExpectedStatusRange() {
         MonitorConfigInput input = new MonitorConfigInput(
-                "API", "https://example.com", null, null, null, null, 500, 400, null);
+                "API", "https://example.com", null, null, null, null, 500, 400, null, null, null);
 
         assertInvalid("expectedStatusMin", input);
     }
@@ -93,7 +113,8 @@ class MonitorConfigValidatorTest {
     @Test
     void acceptsHeadMethodAndTrimsName() {
         MonitorConfig config = validator.validate(new MonitorConfigInput(
-                "  My API  ", "https://example.com", "head", null, null, null, null, null, false));
+                "  My API  ", "https://example.com", "head", null, null, null, null, null, false,
+                null, null));
 
         assertThat(config.name()).isEqualTo("My API");
         assertThat(config.method()).isEqualTo(HttpMethod.HEAD);
@@ -102,12 +123,18 @@ class MonitorConfigValidatorTest {
 
     private MonitorConfigInput inputWithTarget(String url) {
         return new MonitorConfigInput(
-                "API", url, null, null, null, null, null, null, null);
+                "API", url, null, null, null, null, null, null, null, null, null);
     }
 
     private MonitorConfigInput inputWithInterval(int interval) {
         return new MonitorConfigInput(
-                "API", "https://example.com", null, interval, null, null, null, null, null);
+                "API", "https://example.com", null, interval, null, null, null, null, null, null, null);
+    }
+
+    private MonitorConfigInput inputWithThresholds(Integer failureThreshold, Integer recoveryThreshold) {
+        return new MonitorConfigInput(
+                "API", "https://example.com", null, null, null, null, null, null, null,
+                failureThreshold, recoveryThreshold);
     }
 
     private void assertInvalid(String field, MonitorConfigInput input) {

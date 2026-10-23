@@ -332,7 +332,8 @@ class Phase1AcceptanceIT {
                   "responseTimeoutMs":%d,
                   "expectedStatusMin":200,
                   "expectedStatusMax":299,
-                  "enabled":%s
+                  "enabled":%s,
+                  "failureThreshold":1
                 }
                 """.formatted(name, port, path, intervalSeconds, responseTimeoutMs, enabled);
     }

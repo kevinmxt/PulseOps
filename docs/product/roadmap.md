@@ -43,8 +43,8 @@ Phase 1.1 已完成（CI 与验收证据见 [`quality/phase1-acceptance.md`](../
 ### Phase 2：Incident 与通知
 依赖：Phase 1.1 固化的探测结果持久化语义。
 
-- [ ] 连续失败阈值
-- [ ] 连续成功恢复阈值
+- [x] 连续失败阈值
+- [x] 连续成功恢复阈值
 - [ ] Incident 创建、去重和恢复
 - [ ] Telegram 通知
 - [ ] 通知状态、有限重试和日志

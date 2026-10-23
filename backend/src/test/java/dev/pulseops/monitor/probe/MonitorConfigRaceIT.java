@@ -391,7 +391,7 @@ class MonitorConfigRaceIT {
                                      int expectedStatusMin, int expectedStatusMax, boolean enabled) {
         return new MonitorConfigInput(name, "http://127.0.0.1:" + port + path, method,
                 intervalSeconds, connectTimeoutMs, responseTimeoutMs,
-                expectedStatusMin, expectedStatusMax, enabled);
+                expectedStatusMin, expectedStatusMax, enabled, 1, null);
     }
 
     private static void respond(HttpExchange exchange, int status, String body) {

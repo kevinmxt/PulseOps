@@ -100,6 +100,7 @@ class ProbeResolverUnavailableIT {
         monitor.setResponseTimeoutMs(2000);
         monitor.setExpectedStatusMin(200);
         monitor.setExpectedStatusMax(299);
+        monitor.setFailureThreshold(1);
         monitor.setEnabled(true);
         monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
         monitor.setNextCheckAt(now);

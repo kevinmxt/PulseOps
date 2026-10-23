@@ -9,5 +9,7 @@ public record MonitorConfigInput(
         Integer responseTimeoutMs,
         Integer expectedStatusMin,
         Integer expectedStatusMax,
-        Boolean enabled) {
+        Boolean enabled,
+        Integer failureThreshold,
+        Integer recoveryThreshold) {
 }

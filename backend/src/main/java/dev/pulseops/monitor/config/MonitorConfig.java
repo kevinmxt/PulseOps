@@ -11,5 +11,7 @@ public record MonitorConfig(
         int responseTimeoutMs,
         int expectedStatusMin,
         int expectedStatusMax,
-        boolean enabled) {
+        boolean enabled,
+        int failureThreshold,
+        int recoveryThreshold) {
 }

@@ -497,7 +497,9 @@ class ProbeSchedulerIT {
                 responseTimeoutMs,
                 expectedStatusMin,
                 expectedStatusMax,
-                enabled);
+                enabled,
+                null,
+                null);
     }
 
     private void awaitIdle(Long monitorId) {

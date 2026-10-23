@@ -26,6 +26,8 @@
 
 路径可随实现调整，但必须维护一致的 API 文档和测试。
 
+Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（取值 1–10，默认 3/2）；请求中缺失时使用默认值。
+
 ## 分页约定
 
 列表接口使用统一信封：`{items, page, size, totalElements}`。`page` 从 0 开始；`size` 默认 20，最大 100。

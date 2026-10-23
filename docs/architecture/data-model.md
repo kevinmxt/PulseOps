@@ -17,17 +17,21 @@
 - `expected_status_min`
 - `expected_status_max`
 - `enabled`
-- `current_status`：`UNKNOWN`、`UP`、`DOWN`；Phase 1 由最近一次探测结果决定
+- `current_status`：`UNKNOWN`、`UP`、`DOWN`；由连续失败/成功达到阈值的状态机决定，不由单次 Probe 结果决定。`UNKNOWN` 下首次成功直接变为 `UP`。
 - `last_checked_at`
 - `last_success_at`
 - `next_check_at`：内部调度字段，不对外暴露
-- `config_version`：内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled` 不计入版本。
+- `config_version`：内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled`、阈值不计入版本。
+- `consecutive_failures`：连续失败 Probe 计数，成功时清零。
+- `consecutive_successes`：连续成功 Probe 计数，失败时清零。
+- `failure_threshold`：进入故障前所需的连续失败次数。
+- `recovery_threshold`：恢复前所需的连续成功次数。
 - `created_at`
 - `updated_at`
 
 `config_version` 用于探测结果写回时的条件校验；行为规范见 `specs/monitoring.md`。
 
-Phase 2 加入 `failure_threshold`、`recovery_threshold`；Phase 3 加入 `heartbeat_grace_seconds`。各阶段迁移只创建该阶段需要的列。
+Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变更、禁用和重新启用时计数清零。修改阈值不追溯已有计数。Phase 3 加入 `heartbeat_grace_seconds`。各阶段迁移只创建该阶段需要的列。
 
 对时间间隔、超时、URL 和状态字段实施服务端校验。连接超时与响应超时分别对应建连阶段和已建连后的响应阶段，见 ADR-0004。
 
