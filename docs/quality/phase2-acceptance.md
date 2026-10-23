@@ -15,6 +15,7 @@
   [GitHub Actions 39908467517](https://github.com/kevinmxt/PulseOps/actions/runs/39908467517)，提交 `34ed74c`，结论 `success`
 - Phase 2 最后一个功能 PR：
   [GitHub Actions 39908220922](https://github.com/kevinmxt/PulseOps/actions/runs/39908220922)，PR [#28](https://github.com/kevinmxt/PulseOps/pull/28)，head `169325b`，结论 `success`
+- 文档收口 PR：[GitHub Actions 39952301777](https://github.com/kevinmxt/PulseOps/actions/runs/39952301777)，PR [#29](https://github.com/kevinmxt/PulseOps/pull/29)，head `9c4ec89`，结论 `success`（此后仅追加本行链接）
 - 环境：干净 checkout，`ubuntu-latest`，JDK 21（Temurin）；后端使用 Testcontainers PostgreSQL 17，前端生产构建通过。
 
 ## 本地执行记录
