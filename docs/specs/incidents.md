@@ -38,6 +38,13 @@ MVP 优先支持 Telegram Bot。
 
 通知包含监控项名称、故障时间、故障类型/原因摘要；恢复通知包含恢复时间。
 
+投递机制：
+- Incident 创建/关闭与 NotificationDelivery 写入同一事务；发送由独立调度线程完成，使用固定延迟轮询，不在探测事务内发起网络请求。
+- 渠道未配置（Bot Token 与 Chat ID 均缺失）时不生成投递行；只配置其中一个时应用启动失败。
+- 禁用 Monitor 关闭 Incident 时不生成恢复通知。
+- 投递采用 at-least-once 语义，见 [ADR-0005](../adr/0005-transactional-outbox-notifications.md)。
+- 投递状态通过 Incident 详情暴露。
+
 必须：
 - 记录发送状态。
 - 设置超时。

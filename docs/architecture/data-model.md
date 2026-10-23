@@ -77,15 +77,18 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 ## NotificationDelivery
 - `id`
 - `incident_id`
-- `channel`
-- `event_type`
-- `status`
+- `channel`：`TELEGRAM`
+- `event_type`：`INCIDENT_OPENED` 或 `INCIDENT_RESOLVED`
+- `status`：`PENDING`、`SENT`、`FAILED`
 - `attempt_count`
+- `next_attempt_at`
 - `last_attempt_at`
 - `sent_at`
 - `last_error_summary`
 
-用于追踪通知发送和重试，不得把通知失败与故障状态回滚绑定。
+同一 `incident_id`、`event_type` 与 `channel` 唯一。投递行与 Incident 变更在同一事务内写入；发送在独立事务与调度线程中完成。
+
+用于追踪通知发送和重试，不得把通知失败与故障状态回滚绑定。投递采用 at-least-once 语义，见 [ADR-0005](../adr/0005-transactional-outbox-notifications.md)。
 
 ## 数据库规范
 - 所有正式结构变更使用 Flyway。

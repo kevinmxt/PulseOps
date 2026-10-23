@@ -2,8 +2,9 @@ package dev.pulseops.incident;
 
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorStatus;
-import dev.pulseops.monitor.probe.CheckFailureType;
 import dev.pulseops.monitor.probe.ProbeOutcome;
+import dev.pulseops.notification.NotificationEventType;
+import dev.pulseops.notification.NotificationOutbox;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +19,14 @@ public class IncidentService {
     private static final int SUMMARY_MAX_LENGTH = 200;
 
     private final IncidentRepository incidentRepository;
+    private final NotificationOutbox notificationOutbox;
     private final MeterRegistry meterRegistry;
 
-    public IncidentService(IncidentRepository incidentRepository, MeterRegistry meterRegistry) {
+    public IncidentService(IncidentRepository incidentRepository,
+                           NotificationOutbox notificationOutbox,
+                           MeterRegistry meterRegistry) {
         this.incidentRepository = incidentRepository;
+        this.notificationOutbox = notificationOutbox;
         this.meterRegistry = meterRegistry;
     }
 
@@ -29,17 +34,27 @@ public class IncidentService {
         if (!outcome.success() && monitor.getConsecutiveFailures() >= monitor.getFailureThreshold()) {
             openIfNeeded(monitor, outcome);
         } else if (monitor.getCurrentStatus() == MonitorStatus.UP) {
-            closeOpenIncident(monitor.getId(), outcome.finishedAt());
+            resolveOpenIncident(monitor.getId(), outcome.finishedAt());
         }
     }
 
-    public void closeOpenIncident(Long monitorId, Instant resolvedAt) {
-        incidentRepository.findFirstByMonitorIdAndResolvedAtIsNull(monitorId).ifPresent(incident -> {
+    public void resolveOpenIncident(Long monitorId, Instant resolvedAt) {
+        closeOpenIncident(monitorId, resolvedAt).ifPresent(incident ->
+                notificationOutbox.enqueue(incident.getId(), NotificationEventType.INCIDENT_RESOLVED));
+    }
+
+    public void closeOpenIncidentSilently(Long monitorId, Instant resolvedAt) {
+        closeOpenIncident(monitorId, resolvedAt);
+    }
+
+    private java.util.Optional<IncidentEntity> closeOpenIncident(Long monitorId, Instant resolvedAt) {
+        return incidentRepository.findFirstByMonitorIdAndResolvedAtIsNull(monitorId).map(incident -> {
             incident.resolve(resolvedAt);
-            incidentRepository.save(incident);
+            IncidentEntity saved = incidentRepository.save(incident);
             meterRegistry.counter("incident.resolved").increment();
             log.info("Incident resolved, incidentId={}, monitorId={}",
-                    incident.getId(), monitorId);
+                    saved.getId(), monitorId);
+            return saved;
         });
     }
 
@@ -59,30 +74,17 @@ public class IncidentService {
         meterRegistry.counter("incident.opened").increment();
         log.info("Incident opened, incidentId={}, monitorId={}, failureType={}",
                 saved.getId(), saved.getMonitorId(), saved.getFailureType());
+        notificationOutbox.enqueue(saved.getId(), NotificationEventType.INCIDENT_OPENED);
     }
 
     private static String summaryFor(int consecutiveFailures, ProbeOutcome outcome) {
         String summary = "连续 " + consecutiveFailures + " 次探测失败，最新失败："
-                + failureLabel(outcome.failureType());
+                + (outcome.failureType() == null ? "未知失败" : outcome.failureType().label());
         if (outcome.errorSummary() != null && !outcome.errorSummary().isBlank()) {
             summary += "（" + outcome.errorSummary() + "）";
         }
         return summary.length() <= SUMMARY_MAX_LENGTH
                 ? summary
                 : summary.substring(0, SUMMARY_MAX_LENGTH);
-    }
-
-    private static String failureLabel(CheckFailureType failureType) {
-        if (failureType == null) {
-            return "未知失败";
-        }
-        return switch (failureType) {
-            case CONNECTION_FAILED -> "连接失败";
-            case DNS_RESOLVER_EXHAUSTED -> "DNS 解析器不可用";
-            case CONNECT_TIMEOUT -> "连接超时";
-            case RESPONSE_TIMEOUT -> "响应超时";
-            case UNEXPECTED_STATUS -> "非预期状态码";
-            case INTERNAL_ERROR -> "内部探测异常";
-        };
     }
 }

@@ -11,6 +11,7 @@ import dev.pulseops.monitor.probe.CheckFailureType;
 import dev.pulseops.monitor.probe.CheckResultRepository;
 import dev.pulseops.monitor.probe.ProbeService;
 import dev.pulseops.monitor.target.TargetPolicy;
+import dev.pulseops.notification.NotificationDeliveryRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.hc.client5.http.DnsResolver;
 import org.junit.jupiter.api.AfterAll;
@@ -89,6 +90,9 @@ class IncidentLifecycleIT {
 
     @Autowired
     MeterRegistry meterRegistry;
+
+    @Autowired
+    NotificationDeliveryRepository notificationDeliveryRepository;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class IncidentTestConfiguration {
@@ -184,6 +188,7 @@ class IncidentLifecycleIT {
                 .contains("非预期状态码")
                 .doesNotContain("http://")
                 .hasSizeLessThanOrEqualTo(200);
+        assertThat(notificationDeliveryRepository.count()).isZero();
     }
 
     @Test

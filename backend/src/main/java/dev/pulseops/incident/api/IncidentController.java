@@ -5,6 +5,7 @@ import dev.pulseops.common.PageResponse;
 import dev.pulseops.incident.IncidentEntity;
 import dev.pulseops.incident.IncidentQueryService;
 import dev.pulseops.incident.IncidentStatus;
+import dev.pulseops.notification.api.NotificationDeliveryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,10 +45,14 @@ public class IncidentController {
     }
 
     @GetMapping("/{id}")
-    public IncidentResponse get(@PathVariable Long id) {
+    public IncidentDetailResponse get(@PathVariable Long id) {
         IncidentEntity incident = incidentQueryService.get(id);
-        return IncidentResponse.from(incident,
-                incidentQueryService.monitorName(incident.getMonitorId()));
+        List<NotificationDeliveryResponse> deliveries = incidentQueryService
+                .recentDeliveries(incident.getId()).stream()
+                .map(NotificationDeliveryResponse::from)
+                .toList();
+        return IncidentDetailResponse.from(incident,
+                incidentQueryService.monitorName(incident.getMonitorId()), deliveries);
     }
 
     private static IncidentStatus parseStatus(String raw) {

@@ -6,6 +6,11 @@ import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.probe.CheckFailureType;
 import dev.pulseops.monitor.target.TargetPolicy;
+import dev.pulseops.notification.NotificationChannel;
+import dev.pulseops.notification.NotificationDeliveryEntity;
+import dev.pulseops.notification.NotificationDeliveryRepository;
+import dev.pulseops.notification.NotificationDeliveryStatus;
+import dev.pulseops.notification.NotificationEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +58,9 @@ class IncidentApiIT {
     @Autowired
     IncidentRepository incidentRepository;
 
+    @Autowired
+    NotificationDeliveryRepository notificationDeliveryRepository;
+
     @TestConfiguration(proxyBeanMethods = false)
     static class ApiTestConfiguration {
 
@@ -66,6 +74,7 @@ class IncidentApiIT {
 
     @BeforeEach
     void resetState() {
+        notificationDeliveryRepository.deleteAll();
         incidentRepository.deleteAll();
         monitorRepository.deleteAll();
     }
@@ -136,6 +145,24 @@ class IncidentApiIT {
     }
 
     @Test
+    void returnsDeliveryHistoryInIncidentDetail() throws Exception {
+        MonitorEntity monitor = monitor("deliveries");
+        IncidentEntity incident = incident(monitor.getId(), T1, IncidentStatus.RESOLVED);
+        delivery(incident.getId(), NotificationEventType.INCIDENT_OPENED, T1, T1);
+        delivery(incident.getId(), NotificationEventType.INCIDENT_RESOLVED, T2, T2);
+
+        mockMvc.perform(get("/api/v1/incidents/{id}", incident.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveries.length()").value(2))
+                .andExpect(jsonPath("$.deliveries[0].eventType").value("INCIDENT_RESOLVED"))
+                .andExpect(jsonPath("$.deliveries[0].channel").value("TELEGRAM"))
+                .andExpect(jsonPath("$.deliveries[0].status").value("SENT"))
+                .andExpect(jsonPath("$.deliveries[0].attemptCount").value(1))
+                .andExpect(jsonPath("$.deliveries[0].sentAt").value("2026-10-21T09:00:00Z"))
+                .andExpect(jsonPath("$.deliveries[1].eventType").value("INCIDENT_OPENED"));
+    }
+
+    @Test
     void returnsNotFoundForUnknownIncident() throws Exception {
         mockMvc.perform(get("/api/v1/incidents/{id}", 999999))
                 .andExpect(status().isNotFound())
@@ -169,6 +196,20 @@ class IncidentApiIT {
                 true,
                 null,
                 null));
+    }
+
+    private NotificationDeliveryEntity delivery(Long incidentId, NotificationEventType eventType,
+                                                Instant attemptedAt, Instant sentAt) {
+        NotificationDeliveryEntity delivery = new NotificationDeliveryEntity();
+        delivery.setIncidentId(incidentId);
+        delivery.setChannel(NotificationChannel.TELEGRAM);
+        delivery.setEventType(eventType);
+        delivery.setStatus(NotificationDeliveryStatus.SENT);
+        delivery.setAttemptCount(1);
+        delivery.setNextAttemptAt(attemptedAt);
+        delivery.setLastAttemptAt(attemptedAt);
+        delivery.setSentAt(sentAt);
+        return notificationDeliveryRepository.save(delivery);
     }
 
     private IncidentEntity incident(Long monitorId, Instant startedAt, IncidentStatus status) {

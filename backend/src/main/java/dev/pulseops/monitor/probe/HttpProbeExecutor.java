@@ -11,6 +11,7 @@ import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.util.Timeout;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -29,7 +30,8 @@ public class HttpProbeExecutor {
     private final CloseableHttpClient httpClient;
     private final Clock clock;
 
-    public HttpProbeExecutor(CloseableHttpClient httpClient, Clock clock) {
+    public HttpProbeExecutor(@Qualifier("probeHttpClient") CloseableHttpClient httpClient,
+                             Clock clock) {
         this.httpClient = httpClient;
         this.clock = clock;
     }
