@@ -1,13 +1,15 @@
 package dev.pulseops.monitor;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface MonitorRepository extends JpaRepository<MonitorEntity, Long> {
 
@@ -20,20 +22,7 @@ public interface MonitorRepository extends JpaRepository<MonitorEntity, Long> {
             """)
     List<Long> findDueMonitorIds(@Param("now") Instant now, Pageable pageable);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-            update MonitorEntity m
-            set m.currentStatus = :status,
-                m.lastCheckedAt = :checkedAt,
-                m.lastSuccessAt = coalesce(:successAt, m.lastSuccessAt),
-                m.nextCheckAt = :nextCheckAt
-            where m.id = :id
-              and m.configVersion = :expectedVersion
-            """)
-    int updateProbeStatus(@Param("id") Long id,
-                          @Param("expectedVersion") long expectedVersion,
-                          @Param("status") MonitorStatus status,
-                          @Param("checkedAt") Instant checkedAt,
-                          @Param("successAt") Instant successAt,
-                          @Param("nextCheckAt") Instant nextCheckAt);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from MonitorEntity m where m.id = :id")
+    Optional<MonitorEntity> findByIdForUpdate(@Param("id") Long id);
 }

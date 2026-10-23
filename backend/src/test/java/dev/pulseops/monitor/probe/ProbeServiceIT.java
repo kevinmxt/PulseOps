@@ -369,6 +369,7 @@ class ProbeServiceIT {
         monitor.setResponseTimeoutMs(responseTimeoutMs);
         monitor.setExpectedStatusMin(expectedMin);
         monitor.setExpectedStatusMax(expectedMax);
+        monitor.setFailureThreshold(1);
         monitor.setEnabled(true);
         monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
         monitor.setNextCheckAt(now);

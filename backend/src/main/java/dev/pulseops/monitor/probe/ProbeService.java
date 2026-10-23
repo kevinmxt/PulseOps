@@ -4,12 +4,10 @@ import dev.pulseops.monitor.MonitorDisabledException;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorNotFoundException;
 import dev.pulseops.monitor.MonitorRepository;
-import dev.pulseops.monitor.MonitorStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Instant;
 import java.util.Optional;
 
 @Service
@@ -43,17 +41,19 @@ public class ProbeService {
     }
 
     private Optional<CheckResultEntity> persist(ProbeSnapshot snapshot, ProbeOutcome outcome) {
-        Instant nextCheckAt = outcome.finishedAt().plusSeconds(snapshot.intervalSeconds());
-        MonitorStatus status = outcome.success() ? MonitorStatus.UP : MonitorStatus.DOWN;
-        Instant successAt = outcome.success() ? outcome.finishedAt() : null;
-
-        int updated = monitorRepository.updateProbeStatus(
-                snapshot.monitorId(), snapshot.configVersion(), status,
-                outcome.finishedAt(), successAt, nextCheckAt);
-        if (updated == 0) {
+        Optional<MonitorEntity> locked = monitorRepository.findByIdForUpdate(snapshot.monitorId());
+        if (locked.isEmpty() || locked.get().getConfigVersion() != snapshot.configVersion()) {
             // The monitor was deleted or reconfigured while the probe was in flight.
             return Optional.empty();
         }
+
+        MonitorEntity monitor = locked.get();
+        monitor.recordProbeOutcome(outcome.success());
+        monitor.setLastCheckedAt(outcome.finishedAt());
+        if (outcome.success()) {
+            monitor.setLastSuccessAt(outcome.finishedAt());
+        }
+        monitor.setNextCheckAt(outcome.finishedAt().plusSeconds(snapshot.intervalSeconds()));
 
         CheckResultEntity result = new CheckResultEntity();
         result.setMonitorId(snapshot.monitorId());

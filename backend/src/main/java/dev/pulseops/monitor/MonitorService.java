@@ -62,17 +62,27 @@ public class MonitorService {
 
     @Transactional
     public MonitorEntity update(Long id, MonitorConfigInput input) {
-        MonitorEntity monitor = get(id);
+        MonitorEntity monitor = repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new MonitorNotFoundException(id));
         MonitorConfig config = configValidator.validate(input);
         validateTarget(config.targetUrl());
 
+        boolean wasEnabled = monitor.isEnabled();
         boolean semanticsChanged = probeSemanticsChanged(monitor, config);
-        boolean becameEnabled = !monitor.isEnabled() && config.enabled();
+        boolean becameEnabled = !wasEnabled && config.enabled();
+        boolean becameDisabled = wasEnabled && !config.enabled();
         boolean needsImmediateCheck = becameEnabled || semanticsChanged;
 
         applyConfig(monitor, config);
         if (semanticsChanged) {
             monitor.incrementConfigVersion();
+            monitor.resetConsecutiveCounters();
+        }
+        if (becameEnabled) {
+            monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
+            monitor.resetConsecutiveCounters();
+        } else if (becameDisabled) {
+            monitor.resetConsecutiveCounters();
         }
         monitor.setUpdatedAt(clock.instant());
         if (needsImmediateCheck) {
@@ -116,5 +126,7 @@ public class MonitorService {
         monitor.setExpectedStatusMin(config.expectedStatusMin());
         monitor.setExpectedStatusMax(config.expectedStatusMax());
         monitor.setEnabled(config.enabled());
+        monitor.setFailureThreshold(config.failureThreshold());
+        monitor.setRecoveryThreshold(config.recoveryThreshold());
     }
 }
