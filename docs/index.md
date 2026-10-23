@@ -30,6 +30,7 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | `specs/api.md`               | REST API 约定          | 接口设计或修改        |
 | `quality/acceptance.md`      | 全局测试和完成定义            | 实现完成、提交前       |
 | `quality/phase1-acceptance.md` | Phase 1/1.1 验收证据（CI 与历史记录）与限制 | 阶段验收与回顾        |
+| `quality/phase2-acceptance.md` | Phase 2 验收证据（状态机、Incident、通知、重试）与限制 | 阶段验收与回顾        |
 | `quality/deployment.md`      | VPS、Compose、HTTPS、备份、公网发布硬门槛 | 部署和运维          |
 | `adr/README.md`              | 架构决策记录规则             | 重大技术决策         |
 

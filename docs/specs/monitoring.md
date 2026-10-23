@@ -25,6 +25,16 @@
 7. 交由 Incident 模块处理状态变化。
 8. 交由 Notification 模块处理告警。
 
+## 状态机
+`Monitor Status` 由连续成功/失败计数驱动，只有达到阈值时才切换：
+
+- `UNKNOWN` 下首次成功变 `UP`；失败达到 Failure Threshold 变 `DOWN`。
+- `UP` 下失败未达阈值保持 `UP`，达到阈值变 `DOWN`。
+- `DOWN` 下成功未达 Recovery Threshold 保持 `DOWN`，达到后变 `UP`。
+- 探测语义配置变更、禁用与重新启用时清零计数；禁用保留状态，启用置为 `UNKNOWN`。
+
+阈值、Incident 与通知规则见 [`incidents.md`](incidents.md)。
+
 ## 结果要求
 至少记录开始/结束时间、耗时、成功标志、失败类型、HTTP 状态码（适用时）和安全的错误摘要。
 
