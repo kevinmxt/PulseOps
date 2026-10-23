@@ -20,3 +20,21 @@
 ## 总体结论
 
 Phase 1 的分层、持久化、测试组织和执行期 DNS 解析校验整体方向良好。建议先修复“配置更新与正在执行的探测之间的竞态”，并将公网部署前的认证列为硬性门槛，然后再继续 Phase 2。
+
+# PulseOps Phase 2 审阅资料
+
+## 阅读顺序
+
+1. `phase2-review.md`：当前进度完成情况、代码审阅结论、风险与建议。
+2. `phase2-roadmap-notes.md`：对后续路线的修正建议。
+3. `phase2-remediation.md`：如需继续迭代，可按此拆任务。
+
+## 审阅范围
+
+- 本次上传的源码快照
+- Issue #19 及其子 issue 的完成说明
+- Phase 2 对 Incident、Notification 与恢复语义的实现
+
+## 结论摘要
+
+Phase 2 已完成，当前可进入 Phase 3（Heartbeat）。代码整体质量较好，未见需要阻断推进的高危缺陷；但仍建议把“单实例调度”“at-least-once 通知”“服务端认证门槛”作为后续阶段的硬约束继续保持。
