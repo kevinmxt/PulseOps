@@ -86,7 +86,7 @@ public class MonitorService {
             monitor.resetConsecutiveCounters();
         } else if (becameDisabled) {
             monitor.resetConsecutiveCounters();
-            incidentService.closeOpenIncident(monitor.getId(), clock.instant());
+            incidentService.closeOpenIncidentSilently(monitor.getId(), clock.instant());
         }
         monitor.setUpdatedAt(clock.instant());
         if (needsImmediateCheck) {

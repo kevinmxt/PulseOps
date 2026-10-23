@@ -62,6 +62,9 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `DB_PASSWORD` | `pulseops` | 数据库密码，非本地环境必须覆盖 |
 | `SERVER_PORT` | `8080` | HTTP 端口 |
 | `SERVER_ADDRESS` | `127.0.0.1` | 监听地址；Phase 4B 认证门槛完成前保持回环地址（见 [`docs/quality/deployment.md`](docs/quality/deployment.md)） |
+| `PULSEOPS_TELEGRAM_BOT_TOKEN` | 空（通知关闭） | Telegram Bot Token；必须与 Chat ID 同时配置 |
+| `PULSEOPS_TELEGRAM_CHAT_ID` | 空（通知关闭） | Telegram Chat ID |
+| `PULSEOPS_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API 基地址，仅用于测试或代理 |
 
 数据库结构变更一律通过 `backend/src/main/resources/db/migration/` 下的 Flyway 迁移完成，不使用 Hibernate 自动建表。
 
@@ -76,6 +79,18 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `pulseops.probe.pool-size` | `8` | 探测线程数 |
 | `pulseops.probe.queue-capacity` | `100` | 探测任务队列容量；被拒绝的任务在下一 tick 重试 |
 | `pulseops.probe.scheduling-enabled` | `true` | 是否启用自动调度；集成测试中关闭并手动调用 tick |
+
+### 通知投递
+
+以下配置项位于 `pulseops.notification` 前缀下：
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `pulseops.notification.dispatch-interval` | `5s` | 投递轮询的 fixedDelay |
+| `pulseops.notification.batch-size` | `50` | 每轮最多处理的投递数 |
+| `pulseops.notification.scheduling-enabled` | `true` | 是否启用自动投递；集成测试中关闭并手动调用 |
+
+投递与探测使用同一调度线程池但各自独立的调度任务，线程池大小固定为 2（`spring.task.scheduling.pool.size`），避免通知发送阻塞探测 tick。
 
 ## 测试与构建
 
