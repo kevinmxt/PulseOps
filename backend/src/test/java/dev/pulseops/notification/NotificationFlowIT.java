@@ -362,6 +362,9 @@ class NotificationFlowIT {
         assertThat(firstAttempt.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
         assertThat(firstAttempt.getAttemptCount()).isEqualTo(1);
         assertThat(firstAttempt.getNextAttemptAt()).isEqualTo(BASE_TIME.plusSeconds(60));
+        assertThat(firstAttempt.getLastErrorSummary())
+                .contains("HTTP 500")
+                .doesNotContain("test-token");
 
         CLOCK.advance(Duration.ofSeconds(30));
         notificationDispatcher.dispatchDue();
@@ -374,6 +377,7 @@ class NotificationFlowIT {
         assertThat(secondAttempt.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
         assertThat(secondAttempt.getAttemptCount()).isEqualTo(2);
         assertThat(secondAttempt.getNextAttemptAt()).isEqualTo(BASE_TIME.plusSeconds(360));
+        assertThat(secondAttempt.getLastErrorSummary()).contains("HTTP 500");
         assertThat(meterRegistry.counter("notification.failed").count()).isEqualTo(failedBefore);
 
         CLOCK.advance(Duration.ofMinutes(5));
@@ -407,7 +411,9 @@ class NotificationFlowIT {
         probe(monitor);
         telegramStatus = 500;
         notificationDispatcher.dispatchDue();
-        assertThat(onlyDelivery().getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        NotificationDeliveryEntity pending = onlyDelivery();
+        assertThat(pending.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        assertThat(pending.getLastErrorSummary()).contains("HTTP 500");
 
         telegramStatus = 200;
         CLOCK.advance(Duration.ofMinutes(1));
@@ -417,6 +423,7 @@ class NotificationFlowIT {
         assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.SENT);
         assertThat(delivery.getAttemptCount()).isEqualTo(2);
         assertThat(delivery.getSentAt()).isEqualTo(CLOCK.instant());
+        assertThat(delivery.getLastErrorSummary()).isNull();
         assertThat(TELEGRAM_REQUESTS).hasSize(2);
     }
 

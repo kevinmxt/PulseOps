@@ -83,7 +83,8 @@ public class NotificationDispatcher {
             Duration delay = delivery.getAttemptCount() == 1
                     ? FIRST_RETRY_DELAY
                     : SECOND_RETRY_DELAY;
-            delivery.scheduleRetry(clock.instant().plus(delay));
+            delivery.scheduleRetry(clock.instant().plus(delay),
+                    truncate(sender.sanitize(message)));
             log.debug("Notification retry scheduled, deliveryId={}, attemptCount={}, nextAttemptAt={}",
                     delivery.getId(), delivery.getAttemptCount(), delivery.getNextAttemptAt());
             return;

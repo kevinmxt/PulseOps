@@ -1,0 +1,51 @@
+import type { IncidentStatus, NotificationDeliveryStatus } from '../api/types'
+
+const INCIDENT_STATUS_LABELS: Record<IncidentStatus, string> = {
+  OPEN: '进行中',
+  RESOLVED: '已恢复',
+}
+
+const INCIDENT_STATUS_CLASSES: Record<IncidentStatus, string> = {
+  OPEN: 'status-down',
+  RESOLVED: 'status-up',
+}
+
+const DELIVERY_STATUS_LABELS: Record<NotificationDeliveryStatus, string> = {
+  PENDING: '待发送',
+  SENT: '已发送',
+  FAILED: '失败',
+}
+
+const DELIVERY_STATUS_CLASSES: Record<NotificationDeliveryStatus, string> = {
+  PENDING: 'status-unknown',
+  SENT: 'status-up',
+  FAILED: 'status-down',
+}
+
+export function incidentStatusLabel(status: IncidentStatus): string {
+  return INCIDENT_STATUS_LABELS[status]
+}
+
+export function incidentStatusClass(status: IncidentStatus): string {
+  return INCIDENT_STATUS_CLASSES[status]
+}
+
+export function deliveryStatusLabel(status: NotificationDeliveryStatus): string {
+  return DELIVERY_STATUS_LABELS[status]
+}
+
+export function deliveryStatusClass(status: NotificationDeliveryStatus): string {
+  return DELIVERY_STATUS_CLASSES[status]
+}
+
+export function checkResultLabel(success: boolean): string {
+  return success ? '成功' : '失败'
+}
+
+export function checkResultClass(success: boolean): string {
+  return success ? 'status-up' : 'status-down'
+}
+
+export function displayOrDash(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === '' ? '—' : String(value)
+}

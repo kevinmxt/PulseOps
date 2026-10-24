@@ -130,9 +130,10 @@ public class NotificationDeliveryEntity {
         this.lastAttemptAt = attemptedAt;
     }
 
-    public void scheduleRetry(Instant nextAttemptAt) {
+    public void scheduleRetry(Instant nextAttemptAt, String lastErrorSummary) {
         this.status = NotificationDeliveryStatus.PENDING;
         this.nextAttemptAt = nextAttemptAt;
+        this.lastErrorSummary = lastErrorSummary;
     }
 
     public void markSent(Instant sentAt) {
