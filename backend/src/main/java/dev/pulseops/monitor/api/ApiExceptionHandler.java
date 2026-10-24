@@ -2,6 +2,11 @@ package dev.pulseops.monitor.api;
 
 import dev.pulseops.common.InvalidQueryException;
 import dev.pulseops.common.TraceIdFilter;
+import dev.pulseops.heartbeat.HeartbeatNotFoundException;
+import dev.pulseops.heartbeat.HeartbeatPayloadTooLargeException;
+import dev.pulseops.heartbeat.HeartbeatRateLimitedException;
+import dev.pulseops.heartbeat.HttpsRequiredException;
+import dev.pulseops.heartbeat.NotHeartbeatMonitorException;
 import dev.pulseops.incident.IncidentNotFoundException;
 import dev.pulseops.monitor.MonitorNotFoundException;
 import dev.pulseops.monitor.config.InvalidMonitorConfigException;
@@ -47,6 +52,39 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBlockedTarget(BlockedTargetException ex,
                                                                 HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "INVALID_TARGET_URL", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(HeartbeatNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleHeartbeatNotFound(HeartbeatNotFoundException ex,
+                                                                    HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "HEARTBEAT_NOT_FOUND", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(NotHeartbeatMonitorException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotHeartbeatMonitor(NotHeartbeatMonitorException ex,
+                                                                      HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "NOT_HEARTBEAT_MONITOR", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(HeartbeatRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimited(HeartbeatRateLimitedException ex,
+                                                              HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(ex.getRetryAfterSeconds()))
+                .body(new ApiErrorResponse("RATE_LIMITED", ex.getMessage(),
+                        TraceIdFilter.currentTraceId(request)));
+    }
+
+    @ExceptionHandler(HeartbeatPayloadTooLargeException.class)
+    public ResponseEntity<ApiErrorResponse> handlePayloadTooLarge(HeartbeatPayloadTooLargeException ex,
+                                                                  HttpServletRequest request) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(HttpsRequiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpsRequired(HttpsRequiredException ex,
+                                                                HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "HTTPS_REQUIRED", ex.getMessage(), request);
     }
 
     @ExceptionHandler(InvalidQueryException.class)

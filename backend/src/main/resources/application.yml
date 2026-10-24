@@ -24,6 +24,8 @@ pulseops:
     pool-size: 8
     queue-capacity: 100
     scheduling-enabled: true
+  heartbeat:
+    require-https: ${HEARTBEAT_REQUIRE_HTTPS:false}
 
 server:
   port: ${SERVER_PORT:8080}

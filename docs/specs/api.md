@@ -18,6 +18,8 @@
 | PUT | `/api/v1/monitors/{id}` | 修改监控配置 |
 | DELETE | `/api/v1/monitors/{id}` | 删除监控项 |
 | GET | `/api/v1/monitors/{id}/checks` | 查询探测历史 |
+| POST | `/api/v1/monitors/{id}/heartbeat-token` | 轮换心跳令牌 |
+| DELETE | `/api/v1/monitors/{id}/heartbeat-token` | 撤销心跳令牌 |
 | GET | `/api/v1/incidents` | 查询故障事件 |
 | GET | `/api/v1/incidents/{id}` | 查询故障详情 |
 | POST | `/api/v1/heartbeats/{token}` | 上报任务心跳 |
@@ -35,6 +37,13 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 心跳监控项的请求支持 `intervalSeconds`（30–2592000，默认 300）与 `heartbeatGraceSeconds`（0–86400，默认 60）。HTTP 专用字段（`targetUrl`、`method`、超时、期望状态码）及 `failureThreshold`/`recoveryThreshold` 对心跳类型被忽略；响应中这些字段为 `null`，并返回 `heartbeatGraceSeconds` 与 `lastHeartbeatAt`。创建时 `currentStatus` 为 `UNKNOWN`。
 
 创建心跳监控项返回 201，响应额外包含仅此一次可见的 `heartbeatToken`；列表、详情和更新响应中该字段恒为 `null`。数据库只保存令牌摘要，删除监控项时级联删除凭证。更新 `intervalSeconds` 或 `heartbeatGraceSeconds` 时重算心跳截止时间。
+
+### 心跳上报与令牌管理
+
+- `POST /api/v1/heartbeats/{token}`：有效令牌返回 204 且不解析请求体；更新 `lastHeartbeatAt`、`lastCheckedAt`、`lastSuccessAt`，状态置 `UP`，顺延 `nextCheckAt`，并写入一条成功 CheckResult。无效、已撤销、不存在或所属监控项已禁用的令牌统一返回 404 `HEARTBEAT_NOT_FOUND`，不区分原因。
+- `POST /api/v1/monitors/{id}/heartbeat-token`：轮换令牌，返回 200 与仅此一次可见的 `heartbeatToken`；旧令牌立即失效；禁用状态仍允许。非心跳类型返回 400 `NOT_HEARTBEAT_MONITOR`；监控项不存在返回 404 `MONITOR_NOT_FOUND`。
+- `DELETE /api/v1/monitors/{id}/heartbeat-token`：撤销令牌，幂等返回 204；禁用状态仍允许；之后上报返回 404。
+- 防护：按令牌 SHA-256 摘要做进程内固定窗口限流，每分钟 120 次（无效令牌同样计数），超出返回 429 `RATE_LIMITED` 并带 `Retry-After`；请求体超过 1KB 返回 413 `PAYLOAD_TOO_LARGE`；`pulseops.heartbeat.require-https` 开启时要求原生 TLS 或 `X-Forwarded-Proto: https`，否则返回 400 `HTTPS_REQUIRED`。
 
 ## 分页约定
 
