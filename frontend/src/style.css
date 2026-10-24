@@ -136,6 +136,32 @@ a:hover {
   border-radius: 8px;
 }
 
+.error-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  color: var(--down);
+  background: var(--down-soft);
+  border: 1px solid #f2c1ba;
+  border-radius: 6px;
+}
+
+.status-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .data-table {
   width: 100%;
   overflow: hidden;

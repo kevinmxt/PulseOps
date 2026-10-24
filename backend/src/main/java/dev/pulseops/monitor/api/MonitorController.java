@@ -4,6 +4,7 @@ import dev.pulseops.common.PageResponse;
 import dev.pulseops.monitor.MonitorCreationResult;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorService;
+import dev.pulseops.monitor.MonitorType;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.probe.CheckResultEntity;
 import dev.pulseops.monitor.probe.CheckResultQueryService;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/monitors")
@@ -45,7 +47,7 @@ public class MonitorController {
                 .buildAndExpand(created.monitor().getId())
                 .toUri();
         return ResponseEntity.created(location)
-                .body(MonitorResponse.from(created.monitor(), created.heartbeatToken()));
+                .body(MonitorResponse.from(created.monitor(), created.heartbeatToken(), null));
     }
 
     @GetMapping
@@ -53,15 +55,22 @@ public class MonitorController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<MonitorEntity> result = monitorService.list(page, size);
-        List<MonitorResponse> items = result.getContent().stream()
-                .map(MonitorResponse::from)
+        List<MonitorEntity> monitors = result.getContent();
+        List<Long> httpMonitorIds = monitors.stream()
+                .filter(monitor -> monitor.getType() == MonitorType.HTTP)
+                .map(MonitorEntity::getId)
+                .toList();
+        Map<Long, Long> durations = monitorService.latestDurations(httpMonitorIds);
+        List<MonitorResponse> items = monitors.stream()
+                .map(monitor -> MonitorResponse.from(monitor, null, durations.get(monitor.getId())))
                 .toList();
         return new PageResponse<>(items, page, size, result.getTotalElements());
     }
 
     @GetMapping("/{id}")
     public MonitorResponse get(@PathVariable Long id) {
-        return MonitorResponse.from(monitorService.get(id));
+        MonitorEntity monitor = monitorService.get(id);
+        return MonitorResponse.from(monitor, null, lastCheckDuration(monitor));
     }
 
     @GetMapping("/{id}/checks")
@@ -78,7 +87,14 @@ public class MonitorController {
 
     @PutMapping("/{id}")
     public MonitorResponse update(@PathVariable Long id, @RequestBody MonitorConfigInput request) {
-        return MonitorResponse.from(monitorService.update(id, request));
+        MonitorEntity monitor = monitorService.update(id, request);
+        return MonitorResponse.from(monitor, null, lastCheckDuration(monitor));
+    }
+
+    private Long lastCheckDuration(MonitorEntity monitor) {
+        return monitor.getType() == MonitorType.HTTP
+                ? monitorService.latestDuration(monitor.getId())
+                : null;
     }
 
     @DeleteMapping("/{id}")

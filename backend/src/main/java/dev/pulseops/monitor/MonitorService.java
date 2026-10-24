@@ -10,6 +10,7 @@ import dev.pulseops.monitor.config.InvalidMonitorConfigException;
 import dev.pulseops.monitor.config.MonitorConfig;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.config.MonitorConfigValidator;
+import dev.pulseops.monitor.probe.CheckResultRepository;
 import dev.pulseops.monitor.target.TargetPolicy;
 import dev.pulseops.monitor.target.TargetResolutionException;
 import org.springframework.data.domain.Page;
@@ -21,7 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class MonitorService {
@@ -32,18 +37,21 @@ public class MonitorService {
     private final IncidentService incidentService;
     private final HeartbeatCredentialRepository heartbeatCredentialRepository;
     private final HeartbeatTokenGenerator heartbeatTokenGenerator;
+    private final CheckResultRepository checkResultRepository;
     private final Clock clock;
 
     public MonitorService(MonitorRepository repository, MonitorConfigValidator configValidator,
                           TargetPolicy targetPolicy, IncidentService incidentService,
                           HeartbeatCredentialRepository heartbeatCredentialRepository,
-                          HeartbeatTokenGenerator heartbeatTokenGenerator, Clock clock) {
+                          HeartbeatTokenGenerator heartbeatTokenGenerator,
+                          CheckResultRepository checkResultRepository, Clock clock) {
         this.repository = repository;
         this.configValidator = configValidator;
         this.targetPolicy = targetPolicy;
         this.incidentService = incidentService;
         this.heartbeatCredentialRepository = heartbeatCredentialRepository;
         this.heartbeatTokenGenerator = heartbeatTokenGenerator;
+        this.checkResultRepository = checkResultRepository;
         this.clock = clock;
     }
 
@@ -106,6 +114,21 @@ public class MonitorService {
         PageRequest pageRequest = PageQueries.of(page, size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return repository.findAll(pageRequest);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Long> latestDurations(Collection<Long> monitorIds) {
+        if (monitorIds.isEmpty()) {
+            return Map.of();
+        }
+        return checkResultRepository.findLatestDurations(monitorIds).stream()
+                .collect(Collectors.toMap(CheckResultRepository.LatestCheckDuration::getMonitorId,
+                        CheckResultRepository.LatestCheckDuration::getDurationMs));
+    }
+
+    @Transactional(readOnly = true)
+    public Long latestDuration(Long monitorId) {
+        return latestDurations(List.of(monitorId)).get(monitorId);
     }
 
     @Transactional

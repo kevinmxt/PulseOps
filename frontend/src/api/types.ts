@@ -37,6 +37,7 @@ export interface Monitor {
   createdAt: string
   updatedAt: string
   heartbeatToken: string | null
+  lastCheckDurationMs: number | null
 }
 
 export interface MonitorInput {
