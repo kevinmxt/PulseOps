@@ -112,7 +112,7 @@ public class HttpProbeExecutor {
             case RESPONSE_TIMEOUT -> "Response timed out after " + monitor.getResponseTimeoutMs() + " ms";
             case UNEXPECTED_STATUS -> "Unexpected HTTP status code";
             case INTERNAL_ERROR -> "Probe failed: " + rootCauseName(failure);
-            case HEARTBEAT_TIMEOUT -> "Heartbeat timeout";
+            default -> "Probe failed";
         };
     }
 

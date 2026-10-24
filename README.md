@@ -88,7 +88,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
 | `pulseops.heartbeat.tick-interval` | `5s` | 心跳超时扫描的 fixedDelay；最小 100ms |
-| `pulseops.heartbeat.batch-size` | `100` | 每次 tick 最多处理的到期心跳监控项数 |
+| `pulseops.heartbeat.batch-size` | `100` | 每次 tick 最多处理的到期心跳监控项数（1–500） |
 | `pulseops.heartbeat.scheduling-enabled` | `true` | 是否启用自动扫描；集成测试中关闭并手动调用 `HeartbeatScheduler.tick()` |
 | `pulseops.heartbeat.require-https` | `false` | 心跳上报是否强制 HTTPS |
 

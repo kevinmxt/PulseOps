@@ -1,6 +1,5 @@
 package dev.pulseops.heartbeat;
 
-import dev.pulseops.incident.IncidentRepository;
 import dev.pulseops.incident.IncidentService;
 import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.MonitorEntity;
@@ -19,18 +18,15 @@ import java.time.Instant;
 public class HeartbeatTimeoutService {
 
     private final MonitorRepository monitorRepository;
-    private final IncidentRepository incidentRepository;
     private final IncidentService incidentService;
     private final CheckResultRepository checkResultRepository;
     private final Clock clock;
 
     public HeartbeatTimeoutService(MonitorRepository monitorRepository,
-                                   IncidentRepository incidentRepository,
                                    IncidentService incidentService,
                                    CheckResultRepository checkResultRepository,
                                    Clock clock) {
         this.monitorRepository = monitorRepository;
-        this.incidentRepository = incidentRepository;
         this.incidentService = incidentService;
         this.checkResultRepository = checkResultRepository;
         this.clock = clock;
@@ -44,21 +40,17 @@ public class HeartbeatTimeoutService {
         }
 
         Instant now = clock.instant();
-        Instant deadline = monitor.heartbeatDeadline();
+        Instant deadline = monitor.getNextCheckAt();
         if (now.isBefore(deadline)) {
-            monitor.setNextCheckAt(deadline);
-            monitorRepository.save(monitor);
             return;
         }
 
-        boolean incidentOpen = incidentRepository.existsByMonitorIdAndResolvedAtIsNull(monitorId);
-        monitor.setCurrentStatus(MonitorStatus.DOWN);
-        monitor.setLastCheckedAt(now);
         monitor.setNextCheckAt(now.plusSeconds(
                 monitor.getIntervalSeconds() + monitor.getHeartbeatGraceSeconds()));
-        monitor.setUpdatedAt(now);
-        if (!incidentOpen) {
-            incidentService.openHeartbeatTimeout(monitor, deadline);
+        if (incidentService.openHeartbeatTimeout(monitor, deadline)) {
+            monitor.setCurrentStatus(MonitorStatus.DOWN);
+            monitor.setLastCheckedAt(now);
+            monitor.setUpdatedAt(now);
             checkResultRepository.save(timeoutResult(monitorId, now));
         }
         monitorRepository.save(monitor);

@@ -1,6 +1,6 @@
 ALTER TABLE check_result
     DROP CONSTRAINT check_result_failure_type_check,
-    ADD CONSTRAINT chk_check_result_failure_type CHECK (failure_type IN (
+    ADD CONSTRAINT check_result_failure_type_check CHECK (failure_type IN (
         'CONNECTION_FAILED',
         'DNS_RESOLVER_EXHAUSTED',
         'CONNECT_TIMEOUT',
@@ -12,7 +12,7 @@ ALTER TABLE check_result
 
 ALTER TABLE incident
     DROP CONSTRAINT incident_failure_type_check,
-    ADD CONSTRAINT chk_incident_failure_type CHECK (failure_type IN (
+    ADD CONSTRAINT incident_failure_type_check CHECK (failure_type IN (
         'CONNECTION_FAILED',
         'DNS_RESOLVER_EXHAUSTED',
         'CONNECT_TIMEOUT',

@@ -43,9 +43,9 @@ public class IncidentService {
         }
     }
 
-    public void openHeartbeatTimeout(MonitorEntity monitor, Instant deadline) {
+    public boolean openHeartbeatTimeout(MonitorEntity monitor, Instant deadline) {
         if (incidentRepository.existsByMonitorIdAndResolvedAtIsNull(monitor.getId())) {
-            return;
+            return false;
         }
 
         IncidentEntity incident = new IncidentEntity();
@@ -60,6 +60,7 @@ public class IncidentService {
         log.info("Incident opened, incidentId={}, monitorId={}, failureType={}",
                 saved.getId(), saved.getMonitorId(), saved.getFailureType());
         notificationOutbox.enqueue(saved.getId(), NotificationEventType.INCIDENT_OPENED);
+        return true;
     }
 
     public void resolveOpenIncident(Long monitorId, Instant resolvedAt) {

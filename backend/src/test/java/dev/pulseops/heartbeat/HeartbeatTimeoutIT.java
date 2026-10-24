@@ -89,6 +89,9 @@ class HeartbeatTimeoutIT {
     @Autowired
     NotificationDeliveryRepository deliveryRepository;
 
+    @Autowired
+    dev.pulseops.notification.NotificationDispatcher notificationDispatcher;
+
     @TestConfiguration(proxyBeanMethods = false)
     static class TimeConfiguration {
 
@@ -96,6 +99,22 @@ class HeartbeatTimeoutIT {
         @Primary
         Clock testClock() {
             return CLOCK;
+        }
+
+        @Bean
+        @Primary
+        dev.pulseops.notification.TelegramNotificationSender failingTelegramSender() {
+            return new dev.pulseops.notification.TelegramNotificationSender(null, null, null) {
+                @Override
+                public void send(String text) {
+                    throw new dev.pulseops.notification.NotificationSendException("telegram down", true);
+                }
+
+                @Override
+                public String sanitize(String message) {
+                    return message;
+                }
+            };
         }
     }
 
@@ -154,6 +173,7 @@ class HeartbeatTimeoutIT {
         Heartbeat heartbeat = createHeartbeat("cron", 60, 60, true);
         CLOCK.advance(Duration.ofSeconds(121));
         heartbeatScheduler.tick();
+        Instant firstCheckedAt = CLOCK.instant();
 
         CLOCK.advance(Duration.ofSeconds(120));
         heartbeatScheduler.tick();
@@ -162,8 +182,58 @@ class HeartbeatTimeoutIT {
         assertThat(timeoutResults(heartbeat.id())).hasSize(1);
         assertThat(deliveryRepository.count()).isEqualTo(1);
         MonitorEntity monitor = monitorRepository.findById(heartbeat.id()).orElseThrow();
-        assertThat(monitor.getLastCheckedAt()).isEqualTo(CLOCK.instant());
+        assertThat(monitor.getLastCheckedAt()).isEqualTo(firstCheckedAt);
         assertThat(monitor.getNextCheckAt()).isEqualTo(CLOCK.instant().plusSeconds(120));
+    }
+
+    @Test
+    void reportBeforeDeadlinePreventsTimeout() {
+        Heartbeat heartbeat = createHeartbeat("cron", 60, 60, true);
+        CLOCK.advance(Duration.ofSeconds(100));
+        heartbeatService.report(heartbeat.token());
+
+        CLOCK.advance(Duration.ofSeconds(10));
+        heartbeatScheduler.tick();
+
+        assertThat(incidentRepository.count()).isZero();
+        assertThat(timeoutResults(heartbeat.id())).isEmpty();
+        assertThat(monitorRepository.findById(heartbeat.id()).orElseThrow().getCurrentStatus())
+                .isEqualTo(MonitorStatus.UP);
+    }
+
+    @Test
+    void reenabledMonitorTimesOutOnlyAfterTheFullWindow() {
+        Heartbeat heartbeat = createHeartbeat("cron", 60, 60, false);
+        CLOCK.advance(Duration.ofSeconds(1000));
+        Instant enabledAt = CLOCK.instant();
+        monitorService.update(heartbeat.id(), input("cron", 60, 60, true));
+
+        CLOCK.advance(Duration.ofSeconds(119));
+        heartbeatScheduler.tick();
+        assertThat(incidentRepository.count()).isZero();
+
+        CLOCK.advance(Duration.ofSeconds(1));
+        heartbeatScheduler.tick();
+
+        assertThat(incidentRepository.count()).isEqualTo(1);
+        assertThat(incidentRepository.findAll().getFirst().getStartedAt())
+                .isEqualTo(enabledAt.plusSeconds(120));
+    }
+
+    @Test
+    void notificationFailureDoesNotChangeHeartbeatState() {
+        Heartbeat heartbeat = createHeartbeat("cron", 60, 60, true);
+        CLOCK.advance(Duration.ofSeconds(121));
+        heartbeatScheduler.tick();
+
+        notificationDispatcher.dispatchDue();
+
+        MonitorEntity monitor = monitorRepository.findById(heartbeat.id()).orElseThrow();
+        assertThat(monitor.getCurrentStatus()).isEqualTo(MonitorStatus.DOWN);
+        assertThat(incidentRepository.findAll().getFirst().getStatus()).isEqualTo(IncidentStatus.OPEN);
+        NotificationDeliveryEntity delivery = deliveryRepository.findAll().getFirst();
+        assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.PENDING);
+        assertThat(delivery.getAttemptCount()).isEqualTo(1);
     }
 
     @Test
@@ -254,6 +324,7 @@ class HeartbeatTimeoutIT {
         assertThat(incidentRepository.count()).isEqualTo(1);
         assertThat(timeoutResults(heartbeat.id())).hasSize(1);
 
+        Instant firstCheckedAt = CLOCK.instant();
         CLOCK.advance(Duration.ofSeconds(1));
         monitorService.update(heartbeat.id(), input("cron", 30, 0, true));
         heartbeatScheduler.tick();
@@ -262,7 +333,7 @@ class HeartbeatTimeoutIT {
         assertThat(timeoutResults(heartbeat.id())).hasSize(1);
         assertThat(deliveryRepository.count()).isEqualTo(1);
         MonitorEntity monitor = monitorRepository.findById(heartbeat.id()).orElseThrow();
-        assertThat(monitor.getLastCheckedAt()).isEqualTo(CLOCK.instant());
+        assertThat(monitor.getLastCheckedAt()).isEqualTo(firstCheckedAt);
         assertThat(monitor.getNextCheckAt()).isEqualTo(CLOCK.instant().plusSeconds(30));
     }
 
@@ -289,10 +360,14 @@ class HeartbeatTimeoutIT {
             executor.shutdownNow();
         }
 
-        assertThat(incidentRepository.findAll())
-                .allMatch(incident -> incident.getStatus() == IncidentStatus.RESOLVED);
-        assertThat(incidentRepository.count()).isLessThanOrEqualTo(1);
-        assertThat(timeoutResults(heartbeat.id())).hasSizeLessThanOrEqualTo(1);
+        List<IncidentEntity> incidents = incidentRepository.findAll();
+        assertThat(incidents).hasSizeLessThanOrEqualTo(1);
+        assertThat(incidents).allMatch(incident -> incident.getStatus() == IncidentStatus.RESOLVED);
+        if (incidents.isEmpty()) {
+            assertThat(timeoutResults(heartbeat.id())).isEmpty();
+        } else {
+            assertThat(timeoutResults(heartbeat.id())).hasSize(1);
+        }
         assertThat(checkResults(heartbeat.id())).hasSizeLessThanOrEqualTo(2);
         assertThat(monitorRepository.findById(heartbeat.id()).orElseThrow().getCurrentStatus())
                 .isEqualTo(MonitorStatus.UP);
