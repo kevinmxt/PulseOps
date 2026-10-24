@@ -1,7 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getMonitor, updateMonitor } from '../api/client'
+import {
+  ApiError,
+  getMonitor,
+  revokeHeartbeatToken,
+  rotateHeartbeatToken,
+  updateMonitor,
+} from '../api/client'
 import type { Monitor } from '../api/types'
 import { createAppRouter } from '../router'
 import MonitorEditView from './MonitorEditView.vue'
@@ -14,12 +20,42 @@ vi.mock('../api/client', async () => {
     deleteMonitor: vi.fn(),
     getMonitor: vi.fn(),
     listMonitors: vi.fn(),
+    revokeHeartbeatToken: vi.fn(),
+    rotateHeartbeatToken: vi.fn(),
     updateMonitor: vi.fn(),
   }
 })
 
 const getMonitorMock = vi.mocked(getMonitor)
 const updateMonitorMock = vi.mocked(updateMonitor)
+const rotateHeartbeatTokenMock = vi.mocked(rotateHeartbeatToken)
+const revokeHeartbeatTokenMock = vi.mocked(revokeHeartbeatToken)
+
+function heartbeatMonitor(overrides: Partial<Monitor> = {}): Monitor {
+  return monitor({
+    name: 'Nightly job',
+    type: 'HEARTBEAT',
+    targetUrl: null,
+    method: null,
+    intervalSeconds: 300,
+    connectTimeoutMs: null,
+    responseTimeoutMs: null,
+    expectedStatusMin: null,
+    expectedStatusMax: null,
+    failureThreshold: null,
+    recoveryThreshold: null,
+    heartbeatGraceSeconds: 60,
+    ...overrides,
+  })
+}
+
+function buttonByText(wrapper: ReturnType<typeof mount>, text: string) {
+  const button = wrapper.findAll('button').find((candidate) => candidate.text() === text)
+  if (!button) {
+    throw new Error(`button not found: ${text}`)
+  }
+  return button
+}
 
 function monitor(overrides: Partial<Monitor> = {}): Monitor {
   return {
@@ -65,6 +101,8 @@ describe('MonitorEditView', () => {
   beforeEach(() => {
     getMonitorMock.mockReset()
     updateMonitorMock.mockReset()
+    rotateHeartbeatTokenMock.mockReset()
+    revokeHeartbeatTokenMock.mockReset()
   })
 
   it('loads the current config, saves the full payload and navigates to detail', async () => {
@@ -111,21 +149,83 @@ describe('MonitorEditView', () => {
     expect((wrapper.find('#monitor-name').element as HTMLInputElement).value).toBe('Second')
   })
 
-  it('shows a notice instead of the form for heartbeat monitors', async () => {
-    getMonitorMock.mockResolvedValue(
-      monitor({
-        type: 'HEARTBEAT',
-        targetUrl: null,
-        method: null,
-        failureThreshold: null,
-        recoveryThreshold: null,
-        heartbeatGraceSeconds: 60,
+  it('edits a heartbeat monitor and rotates or revokes its token', async () => {
+    getMonitorMock.mockResolvedValue(heartbeatMonitor())
+    updateMonitorMock.mockResolvedValue(heartbeatMonitor({ intervalSeconds: 600 }))
+    rotateHeartbeatTokenMock.mockResolvedValue({ heartbeatToken: 'rotated-9' })
+    revokeHeartbeatTokenMock.mockResolvedValue(undefined)
+    const { wrapper, router } = await mountEdit('8')
+
+    expect((wrapper.find('#heartbeat-name').element as HTMLInputElement).value).toBe(
+      'Nightly job',
+    )
+    expect((wrapper.find('#heartbeat-interval').element as HTMLInputElement).value).toBe('300')
+
+    await wrapper.find('#heartbeat-interval').setValue(600)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(updateMonitorMock).toHaveBeenCalledWith(8, {
+      name: 'Nightly job',
+      type: 'HEARTBEAT',
+      intervalSeconds: 600,
+      heartbeatGraceSeconds: 60,
+      enabled: true,
+    })
+    expect(wrapper.text()).toContain('已保存')
+
+    await buttonByText(wrapper, '轮换令牌').trigger('click')
+    await flushPromises()
+
+    expect(rotateHeartbeatTokenMock).toHaveBeenCalledWith(8)
+    expect((wrapper.find('#heartbeat-token').element as HTMLInputElement).value).toBe(
+      'rotated-9',
+    )
+    expect(router.currentRoute.value.fullPath).toBe('/monitors/8/edit')
+    expect(localStorage.length).toBe(0)
+    expect(sessionStorage.length).toBe(0)
+
+    await buttonByText(wrapper, '撤销令牌').trigger('click')
+    await flushPromises()
+
+    expect(revokeHeartbeatTokenMock).toHaveBeenCalledWith(8)
+    expect(wrapper.find('#heartbeat-token').exists()).toBe(false)
+    expect(wrapper.text()).toContain('令牌已撤销')
+  })
+
+  it('keeps token actions available for a disabled heartbeat monitor', async () => {
+    getMonitorMock.mockResolvedValue(heartbeatMonitor({ enabled: false }))
+    const { wrapper } = await mountEdit('8')
+
+    expect(buttonByText(wrapper, '轮换令牌').attributes('disabled')).toBeUndefined()
+    expect(buttonByText(wrapper, '撤销令牌').attributes('disabled')).toBeUndefined()
+  })
+
+  it('does not show a token on re-entry and prompts rotation', async () => {
+    getMonitorMock.mockResolvedValue(heartbeatMonitor())
+    const { wrapper } = await mountEdit('8')
+
+    expect(wrapper.find('#heartbeat-token').exists()).toBe(false)
+    expect(wrapper.text()).toContain('遗失后必须轮换')
+  })
+
+  it('shows token errors with code, message and trace id', async () => {
+    getMonitorMock.mockResolvedValue(heartbeatMonitor())
+    rotateHeartbeatTokenMock.mockRejectedValue(
+      new ApiError('rotation failed', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-8',
       }),
     )
-    const { wrapper } = await mountEdit()
+    const { wrapper } = await mountEdit('8')
 
-    expect(wrapper.text()).toContain('心跳监控项')
-    expect(wrapper.find('form').exists()).toBe(false)
+    await buttonByText(wrapper, '轮换令牌').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('INTERNAL_ERROR')
+    expect(wrapper.text()).toContain('rotation failed')
+    expect(wrapper.text()).toContain('trace-8')
   })
 
   it('shows load errors with code, message and trace id', async () => {

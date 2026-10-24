@@ -1,4 +1,5 @@
 import type { HttpMethod, Monitor, MonitorInput, MonitorType } from '../api/types'
+import { requireIntegerRange, validateMonitorName } from './formValidation'
 
 export interface HttpMonitorFormValues {
   name: string
@@ -86,11 +87,9 @@ export function monitorToInput(monitor: Monitor, enabled = monitor.enabled): Mon
 
 export function validateHttpMonitorForm(values: HttpMonitorFormValues): MonitorFormErrors {
   const errors: MonitorFormErrors = {}
-  const name = values.name.trim()
-  if (!name) {
-    errors.name = '名称不能为空'
-  } else if (name.length > 100) {
-    errors.name = '名称最多 100 个字符'
+  const nameError = validateMonitorName(values.name)
+  if (nameError) {
+    errors.name = nameError
   }
 
   const urlError = validateTargetUrl(values.targetUrl)
@@ -98,13 +97,29 @@ export function validateHttpMonitorForm(values: HttpMonitorFormValues): MonitorF
     errors.targetUrl = urlError
   }
 
-  requireRange(errors, 'intervalSeconds', values.intervalSeconds, 10, 86400, '检查间隔')
-  requireRange(errors, 'connectTimeoutMs', values.connectTimeoutMs, 1000, 10000, '连接超时')
-  requireRange(errors, 'responseTimeoutMs', values.responseTimeoutMs, 1000, 30000, '响应超时')
-  requireRange(errors, 'expectedStatusMin', values.expectedStatusMin, 100, 599, '最小状态码')
-  requireRange(errors, 'expectedStatusMax', values.expectedStatusMax, 100, 599, '最大状态码')
-  requireRange(errors, 'failureThreshold', values.failureThreshold, 1, 10, '失败阈值')
-  requireRange(errors, 'recoveryThreshold', values.recoveryThreshold, 1, 10, '恢复阈值')
+  requireIntegerRange(errors, 'intervalSeconds', values.intervalSeconds, 10, 86400, '检查间隔', '秒')
+  requireIntegerRange(
+    errors,
+    'connectTimeoutMs',
+    values.connectTimeoutMs,
+    1000,
+    10000,
+    '连接超时',
+    '毫秒',
+  )
+  requireIntegerRange(
+    errors,
+    'responseTimeoutMs',
+    values.responseTimeoutMs,
+    1000,
+    30000,
+    '响应超时',
+    '毫秒',
+  )
+  requireIntegerRange(errors, 'expectedStatusMin', values.expectedStatusMin, 100, 599, '最小状态码')
+  requireIntegerRange(errors, 'expectedStatusMax', values.expectedStatusMax, 100, 599, '最大状态码')
+  requireIntegerRange(errors, 'failureThreshold', values.failureThreshold, 1, 10, '失败阈值')
+  requireIntegerRange(errors, 'recoveryThreshold', values.recoveryThreshold, 1, 10, '恢复阈值')
 
   if (
     values.expectedStatusMin !== null &&
@@ -150,21 +165,4 @@ function validateTargetUrl(raw: string): string | null {
     return 'URL 端口无效'
   }
   return null
-}
-
-function requireRange(
-  errors: MonitorFormErrors,
-  field: keyof HttpMonitorFormValues,
-  value: number | null,
-  min: number,
-  max: number,
-  label: string,
-): void {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    errors[field] = `${label}不能为空`
-    return
-  }
-  if (!Number.isInteger(value) || value < min || value > max) {
-    errors[field] = `${label}必须在 ${min}–${max} 之间`
-  }
 }
