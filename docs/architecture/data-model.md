@@ -51,7 +51,7 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 - `http_status_code`
 - `error_summary`
 
-按 `monitor_id` 和时间字段建立适当索引。错误摘要应截断，不能包含凭证。心跳有效上报写入 `success = true` 的 CheckResult，`duration_ms = 0`，失败相关字段为空。
+按 `monitor_id` 和时间字段建立适当索引。错误摘要应截断，不能包含凭证。心跳有效上报写入 `success = true` 的 CheckResult，`duration_ms = 0`，失败相关字段为空；心跳超时只在创建 Incident 时写入一条 `HEARTBEAT_TIMEOUT` 失败结果。
 
 ## Incident
 表示一次持续故障事件。
@@ -65,7 +65,7 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 - `failure_type`
 - `summary`
 
-同一监控项最多有一个未解决的当前 Incident，由部分唯一索引与探测写回的行锁保证。`status` 取 `OPEN` 或 `RESOLVED`；恢复时写入 `resolved_at`。禁用 Monitor 时静默关闭未解决 Incident，删除时级联删除。
+同一监控项最多有一个未解决的当前 Incident，由部分唯一索引与探测写回的行锁保证。`status` 取 `OPEN` 或 `RESOLVED`；恢复时写入 `resolved_at`。禁用 Monitor 时静默关闭未解决 Incident，删除时级联删除。心跳超时的 `started_at` 使用截止时间，失败类型为 `HEARTBEAT_TIMEOUT`；有效上报在接收时间关闭 Incident。
 
 ## HeartbeatCredential
 - `id`

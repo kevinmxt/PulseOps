@@ -81,6 +81,19 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `pulseops.probe.queue-capacity` | `100` | 探测任务队列容量；被拒绝的任务在下一 tick 重试 |
 | `pulseops.probe.scheduling-enabled` | `true` | 是否启用自动调度；集成测试中关闭并手动调用 tick |
 
+### 心跳扫描
+
+以下配置项位于 `pulseops.heartbeat` 前缀下：
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `pulseops.heartbeat.tick-interval` | `5s` | 心跳超时扫描的 fixedDelay；最小 100ms |
+| `pulseops.heartbeat.batch-size` | `100` | 每次 tick 最多处理的到期心跳监控项数 |
+| `pulseops.heartbeat.scheduling-enabled` | `true` | 是否启用自动扫描；集成测试中关闭并手动调用 `HeartbeatScheduler.tick()` |
+| `pulseops.heartbeat.require-https` | `false` | 心跳上报是否强制 HTTPS |
+
+心跳扫描使用独立的单线程调度器 `heartbeatTickScheduler`，与探测、通知互不阻塞。
+
 ### 通知投递
 
 以下配置项位于 `pulseops.notification` 前缀下：

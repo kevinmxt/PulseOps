@@ -26,6 +26,11 @@
 ## Heartbeat 规则
 Heartbeat 使用最后一次有效心跳、预期间隔和宽限时间判断超时，不直接复用 HTTP 连续失败计数。
 
+- 超时后置 `DOWN`、创建唯一未解决 Incident，失败类型为 `HEARTBEAT_TIMEOUT`（"心跳超时"），`started_at` 使用截止时间。
+- 仅在创建 Incident 时写入一条 `HEARTBEAT_TIMEOUT` CheckResult；重复扫描不重复写入。
+- 有效上报立即置 `UP` 并关闭未解决 Incident，生成恢复通知；不使用恢复阈值。
+- 禁用监控项静默关闭 Incident，不生成恢复通知；重新启用时置 `UNKNOWN` 并获得完整间隔加宽限窗口。
+
 ## 一致性与并发
 - 同一监控项最多有一个未解决 Incident，由部分唯一索引和探测写回的行锁保证。
 - 使用事务、唯一约束或等效并发控制保证不变量。

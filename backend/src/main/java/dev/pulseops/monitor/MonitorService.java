@@ -171,7 +171,10 @@ public class MonitorService {
             incidentService.closeOpenIncidentSilently(monitor.getId(), clock.instant());
         }
         monitor.setUpdatedAt(clock.instant());
-        if (deadlineConfigChanged) {
+        if (becameEnabled) {
+            monitor.setNextCheckAt(monitor.getUpdatedAt().plusSeconds(
+                    config.intervalSeconds() + config.graceSeconds()));
+        } else if (deadlineConfigChanged) {
             monitor.setNextCheckAt(monitor.heartbeatDeadline());
         }
         return repository.save(monitor);

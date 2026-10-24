@@ -5,6 +5,8 @@ import dev.pulseops.monitor.MonitorDisabledException;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorNotFoundException;
 import dev.pulseops.monitor.MonitorRepository;
+import dev.pulseops.monitor.MonitorType;
+import dev.pulseops.monitor.UnsupportedMonitorTypeException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,6 +39,9 @@ public class ProbeService {
                 .orElseThrow(() -> new MonitorNotFoundException(monitorId));
         if (!monitor.isEnabled()) {
             throw new MonitorDisabledException(monitorId);
+        }
+        if (monitor.getType() != MonitorType.HTTP) {
+            throw new UnsupportedMonitorTypeException(monitorId, monitor.getType());
         }
         ProbeSnapshot snapshot = new ProbeSnapshot(monitorId, monitor.getConfigVersion(),
                 monitor.getIntervalSeconds());

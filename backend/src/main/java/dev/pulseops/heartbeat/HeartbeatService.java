@@ -1,5 +1,6 @@
 package dev.pulseops.heartbeat;
 
+import dev.pulseops.incident.IncidentService;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorNotFoundException;
 import dev.pulseops.monitor.MonitorRepository;
@@ -20,17 +21,20 @@ public class HeartbeatService {
     private final MonitorRepository monitorRepository;
     private final CheckResultRepository checkResultRepository;
     private final HeartbeatTokenGenerator tokenGenerator;
+    private final IncidentService incidentService;
     private final Clock clock;
 
     public HeartbeatService(HeartbeatCredentialRepository credentialRepository,
                             MonitorRepository monitorRepository,
                             CheckResultRepository checkResultRepository,
                             HeartbeatTokenGenerator tokenGenerator,
+                            IncidentService incidentService,
                             Clock clock) {
         this.credentialRepository = credentialRepository;
         this.monitorRepository = monitorRepository;
         this.checkResultRepository = checkResultRepository;
         this.tokenGenerator = tokenGenerator;
+        this.incidentService = incidentService;
         this.clock = clock;
     }
 
@@ -67,6 +71,8 @@ public class HeartbeatService {
         result.setDurationMs(0);
         result.setSuccess(true);
         checkResultRepository.save(result);
+
+        incidentService.resolveOpenIncident(monitor.getId(), now);
     }
 
     @Transactional

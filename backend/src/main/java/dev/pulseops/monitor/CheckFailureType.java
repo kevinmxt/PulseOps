@@ -6,7 +6,8 @@ public enum CheckFailureType {
     CONNECT_TIMEOUT("连接超时"),
     RESPONSE_TIMEOUT("响应超时"),
     UNEXPECTED_STATUS("非预期状态码"),
-    INTERNAL_ERROR("内部探测异常");
+    INTERNAL_ERROR("内部探测异常"),
+    HEARTBEAT_TIMEOUT("心跳超时");
 
     private final String label;
 

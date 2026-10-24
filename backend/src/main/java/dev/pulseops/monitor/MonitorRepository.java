@@ -23,6 +23,16 @@ public interface MonitorRepository extends JpaRepository<MonitorEntity, Long> {
             """)
     List<Long> findDueMonitorIds(@Param("now") Instant now, Pageable pageable);
 
+    @Query("""
+            select m.id
+            from MonitorEntity m
+            where m.enabled = true
+              and m.type = dev.pulseops.monitor.MonitorType.HEARTBEAT
+              and m.nextCheckAt <= :now
+            order by m.nextCheckAt asc, m.id asc
+            """)
+    List<Long> findDueHeartbeatIds(@Param("now") Instant now, Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from MonitorEntity m where m.id = :id")
     Optional<MonitorEntity> findByIdForUpdate(@Param("id") Long id);

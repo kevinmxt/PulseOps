@@ -6,6 +6,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,7 +19,7 @@ class HeartbeatControllerTest {
     private final HeartbeatService service = mock(HeartbeatService.class);
     private final HeartbeatController controller = new HeartbeatController(
             service, new HeartbeatTokenGenerator(), new HeartbeatRateLimiter(Clock.systemUTC()),
-            new HeartbeatProperties(false));
+            new HeartbeatProperties(false, Duration.ofSeconds(5), 100, true));
 
     @Test
     void rejectsChunkedBodiesLargerThanOneKilobyte() {
