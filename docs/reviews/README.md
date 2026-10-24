@@ -38,3 +38,22 @@ Phase 1 的分层、持久化、测试组织和执行期 DNS 解析校验整体�
 ## 结论摘要
 
 Phase 2 已完成，当前可进入 Phase 3（Heartbeat）。代码整体质量较好，未见需要阻断推进的高危缺陷；但仍建议把“单实例调度”“at-least-once 通知”“服务端认证门槛”作为后续阶段的硬约束继续保持。
+
+# PulseOps Phase 3 审阅资料
+
+## 阅读顺序
+
+1. `phase3-review.md`：当前进度、代码审阅结论、风险与建议。
+2. `phase3-roadmap-notes.md`：对 Phase 4 及之后路线的建议。
+3. `phase3-remediation.md`：可选的后续修正任务。
+
+## 审阅范围
+
+- 本次上传的源码快照
+- Phase 3 心跳监控、令牌、超时、Incident 与通知实现
+- Issue #19 及其完成方案
+- Phase 3 验收证据
+
+## 结论摘要
+
+Phase 3 已完成，可以进入 Phase 4A（最小可用 UI）。代码整体质量继续保持较好，已满足当前单实例、事务性 outbox、心跳超时与恢复语义的设计目标。审阅中唯一比较值得顺手改进的是：**通知重试期间的 `lastErrorSummary` 目前只在终态失败时写入，PENDING 重试态下对排障不够直观**。
