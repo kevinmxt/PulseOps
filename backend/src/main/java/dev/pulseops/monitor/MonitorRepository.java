@@ -17,6 +17,7 @@ public interface MonitorRepository extends JpaRepository<MonitorEntity, Long> {
             select m.id
             from MonitorEntity m
             where m.enabled = true
+              and m.type = dev.pulseops.monitor.MonitorType.HTTP
               and m.nextCheckAt <= :now
             order by m.nextCheckAt asc, m.id asc
             """)

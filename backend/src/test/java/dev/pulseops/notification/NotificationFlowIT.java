@@ -502,7 +502,7 @@ class NotificationFlowIT {
                 299,
                 true,
                 null,
-                null));
+                null)).monitor();
     }
 
     private void probe(MonitorEntity monitor) {

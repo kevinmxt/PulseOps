@@ -52,8 +52,8 @@ Phase 2 已完成（CI 与验收证据见 [`quality/phase2-acceptance.md`](../qu
 完成条件：不会为同一持续故障重复创建 Incident；通知故障不阻塞探测；恢复事件正确关闭。完成证据见 [`quality/phase2-acceptance.md`](../quality/phase2-acceptance.md)。
 
 ### Phase 3：Heartbeat
-- [ ] 心跳监控项
-- [ ] 高强度随机令牌及安全存储
+- [x] 心跳监控项
+- [x] 高强度随机令牌及安全存储
 - [ ] 心跳上报接口
 - [ ] 超时扫描
 - [ ] 故障与恢复通知

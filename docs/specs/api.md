@@ -28,6 +28,14 @@
 
 Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（取值 1–10，默认 3/2）；请求中缺失时使用默认值。
 
+### 监控类型
+
+`type` 取 `HTTP`（默认）或 `HEARTBEAT`，创建后不可变。更新使用整体替换语义：除省略的 `type` 表示保持原类型外，未提供的可配置字段按默认值处理；传入不同的 `type` 返回 400 `VALIDATION_ERROR`。
+
+心跳监控项的请求支持 `intervalSeconds`（30–2592000，默认 300）与 `heartbeatGraceSeconds`（0–86400，默认 60）。HTTP 专用字段（`targetUrl`、`method`、超时、期望状态码）及 `failureThreshold`/`recoveryThreshold` 对心跳类型被忽略；响应中这些字段为 `null`，并返回 `heartbeatGraceSeconds` 与 `lastHeartbeatAt`。创建时 `currentStatus` 为 `UNKNOWN`。
+
+创建心跳监控项返回 201，响应额外包含仅此一次可见的 `heartbeatToken`；列表、详情和更新响应中该字段恒为 `null`。数据库只保存令牌摘要，删除监控项时级联删除凭证。更新 `intervalSeconds` 或 `heartbeatGraceSeconds` 时重算心跳截止时间。
+
 ## 分页约定
 
 列表接口使用统一信封：`{items, page, size, totalElements}`。`page` 从 0 开始；`size` 默认 20，最大 100。

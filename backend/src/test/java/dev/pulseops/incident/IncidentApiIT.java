@@ -195,7 +195,7 @@ class IncidentApiIT {
                 299,
                 true,
                 null,
-                null));
+                null)).monitor();
     }
 
     private NotificationDeliveryEntity delivery(Long incidentId, NotificationEventType eventType,

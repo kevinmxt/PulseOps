@@ -1,5 +1,6 @@
 package dev.pulseops.monitor;
 
 public enum MonitorType {
-    HTTP
+    HTTP,
+    HEARTBEAT
 }

@@ -9,19 +9,21 @@
 - `id`
 - `name`
 - `type`：`HTTP` 或 `HEARTBEAT`
-- `target_url`：HTTP 类型使用
-- `method`
-- `interval_seconds`
-- `connect_timeout_ms`
-- `response_timeout_ms`
-- `expected_status_min`
-- `expected_status_max`
+- `target_url`：仅 HTTP 类型，心跳类型为 `NULL`
+- `method`：仅 HTTP 类型
+- `interval_seconds`：HTTP 为 10–86400 秒；HEARTBEAT 为 30–2592000 秒
+- `connect_timeout_ms`：仅 HTTP 类型
+- `response_timeout_ms`：仅 HTTP 类型
+- `expected_status_min`：仅 HTTP 类型
+- `expected_status_max`：仅 HTTP 类型
+- `heartbeat_grace_seconds`：仅 HEARTBEAT 类型，0–86400 秒
+- `last_heartbeat_at`：最后一次有效上报时间；心跳截止时间按 `(last_heartbeat_at ?? created_at) + interval_seconds + heartbeat_grace_seconds` 计算
 - `enabled`
 - `current_status`：`UNKNOWN`、`UP`、`DOWN`；由连续失败/成功达到阈值的状态机决定，不由单次 Probe 结果决定。`UNKNOWN` 下首次成功直接变为 `UP`。
 - `last_checked_at`
 - `last_success_at`
 - `next_check_at`：内部调度字段，不对外暴露
-- `config_version`：内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled`、阈值不计入版本。
+- `config_version`：HTTP 类型的内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled`、阈值不计入版本。心跳类型不使用此字段。
 - `consecutive_failures`：连续失败 Probe 计数，成功时清零。
 - `consecutive_successes`：连续成功 Probe 计数，失败时清零。
 - `failure_threshold`：进入故障前所需的连续失败次数。
@@ -31,7 +33,7 @@
 
 `config_version` 用于探测结果写回时的条件校验；行为规范见 `specs/monitoring.md`。
 
-Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变更、禁用和重新启用时计数清零。修改阈值不追溯已有计数。Phase 3 加入 `heartbeat_grace_seconds`。各阶段迁移只创建该阶段需要的列。
+Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变更、禁用和重新启用时计数清零。修改阈值不追溯已有计数。HTTP 类型必须配置完整的目标 URL、方法、超时与期望状态码，由数据库 CHECK 约束保证；心跳类型不参与这些字段。`next_check_at` 对 HTTP 表示下次探测时间，对心跳表示下次超时扫描时间。各阶段迁移只创建该阶段需要的列。
 
 对时间间隔、超时、URL 和状态字段实施服务端校验。连接超时与响应超时分别对应建连阶段和已建连后的响应阶段，见 ADR-0004。
 
@@ -68,11 +70,11 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 ## HeartbeatCredential
 - `id`
 - `monitor_id`
-- `token_hash`
+- `token_hash`：令牌的 SHA-256 十六进制摘要，全局唯一
 - `created_at`
 - `revoked_at`
 
-数据库只保存安全摘要，不保存明文令牌。令牌必须足够随机并可撤销。
+数据库只保存安全摘要，不保存明文令牌。令牌必须足够随机并可撤销。每个 Monitor 同时最多一个未撤销凭证，由部分唯一索引保证；删除 Monitor 时级联删除凭证。
 
 ## NotificationDelivery
 - `id`
