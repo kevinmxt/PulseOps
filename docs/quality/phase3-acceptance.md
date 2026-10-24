@@ -13,7 +13,7 @@
 - #33 创建心跳监控项：[GitHub Actions 40059897877](https://github.com/kevinmxt/PulseOps/actions/runs/40059897877)，PR [#38](https://github.com/kevinmxt/PulseOps/pull/38)，head `156fc5d`，结论 `success`
 - #34 心跳上报与令牌管理：[GitHub Actions 40061655278](https://github.com/kevinmxt/PulseOps/actions/runs/40061655278)，PR [#39](https://github.com/kevinmxt/PulseOps/pull/39)，head `3e933bc`，结论 `success`
 - #35 超时、Incident 与通知：[GitHub Actions 40063379820](https://github.com/kevinmxt/PulseOps/actions/runs/40063379820)，PR [#40](https://github.com/kevinmxt/PulseOps/pull/40)，head `1240f54`，结论 `success`
-- #36 文档收口 PR：[GitHub Actions 40064666873](https://github.com/kevinmxt/PulseOps/actions/runs/40064666873)，PR [#41](https://github.com/kevinmxt/PulseOps/pull/41)，head `e79c08b`，结论 `success`（此后仅更新本行证据链接）
+- #36 文档收口 PR：[GitHub Actions 40065379208](https://github.com/kevinmxt/PulseOps/actions/runs/40065379208)，PR [#41](https://github.com/kevinmxt/PulseOps/pull/41)，head `7b8b79a`，结论 `success`（此后仅更新本行证据链接）
 - 环境：干净 checkout，`ubuntu-latest`，JDK 21（Temurin）；后端使用 Testcontainers PostgreSQL 17，前端生产构建通过。
 
 ## 本地执行记录
