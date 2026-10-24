@@ -22,6 +22,12 @@ const emit = defineEmits<{
 
 const dialog = ref<HTMLElement | null>(null)
 
+function cancel(): void {
+  if (!props.busy) {
+    emit('cancel')
+  }
+}
+
 watch(
   () => props.open,
   async (open) => {
@@ -34,7 +40,7 @@ watch(
 </script>
 
 <template>
-  <div v-if="open" class="dialog-backdrop" @click.self="emit('cancel')">
+  <div v-if="open" class="dialog-backdrop" @click.self="cancel">
     <div
       ref="dialog"
       class="dialog"
@@ -42,12 +48,12 @@ watch(
       aria-modal="true"
       :aria-label="title"
       tabindex="-1"
-      @keydown.esc="emit('cancel')"
+      @keydown.esc="cancel"
     >
       <h2>{{ title }}</h2>
       <p class="muted">{{ message }}</p>
       <div class="dialog-actions">
-        <button class="button" type="button" :disabled="busy" @click="emit('cancel')">取消</button>
+        <button class="button" type="button" :disabled="busy" @click="cancel">取消</button>
         <button class="button button-danger" type="button" :disabled="busy" @click="emit('confirm')">
           {{ busy ? '处理中…' : confirmLabel }}
         </button>
