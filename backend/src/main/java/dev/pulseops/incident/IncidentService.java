@@ -1,5 +1,6 @@
 package dev.pulseops.incident;
 
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorStatus;
 import dev.pulseops.monitor.probe.ProbeOutcome;
@@ -11,12 +12,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class IncidentService {
 
     private static final Logger log = LoggerFactory.getLogger(IncidentService.class);
     private static final int SUMMARY_MAX_LENGTH = 200;
+    private static final DateTimeFormatter TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
     private final IncidentRepository incidentRepository;
     private final NotificationOutbox notificationOutbox;
@@ -36,6 +41,26 @@ public class IncidentService {
         } else if (monitor.getCurrentStatus() == MonitorStatus.UP) {
             resolveOpenIncident(monitor.getId(), outcome.finishedAt());
         }
+    }
+
+    public boolean openHeartbeatTimeout(MonitorEntity monitor, Instant deadline) {
+        if (incidentRepository.existsByMonitorIdAndResolvedAtIsNull(monitor.getId())) {
+            return false;
+        }
+
+        IncidentEntity incident = new IncidentEntity();
+        incident.setMonitorId(monitor.getId());
+        incident.setStartedAt(deadline);
+        incident.setStatus(IncidentStatus.OPEN);
+        incident.setFailureType(CheckFailureType.HEARTBEAT_TIMEOUT);
+        incident.setSummary(heartbeatSummary(monitor));
+        IncidentEntity saved = incidentRepository.save(incident);
+
+        meterRegistry.counter("incident.opened").increment();
+        log.info("Incident opened, incidentId={}, monitorId={}, failureType={}",
+                saved.getId(), saved.getMonitorId(), saved.getFailureType());
+        notificationOutbox.enqueue(saved.getId(), NotificationEventType.INCIDENT_OPENED);
+        return true;
     }
 
     public void resolveOpenIncident(Long monitorId, Instant resolvedAt) {
@@ -75,6 +100,18 @@ public class IncidentService {
         log.info("Incident opened, incidentId={}, monitorId={}, failureType={}",
                 saved.getId(), saved.getMonitorId(), saved.getFailureType());
         notificationOutbox.enqueue(saved.getId(), NotificationEventType.INCIDENT_OPENED);
+    }
+
+    private static String heartbeatSummary(MonitorEntity monitor) {
+        String lastHeartbeat = monitor.getLastHeartbeatAt() == null
+                ? "从未收到心跳"
+                : "最后心跳 " + TIME_FORMAT.format(monitor.getLastHeartbeatAt());
+        String summary = "心跳超时：" + lastHeartbeat
+                + "，预期间隔 " + monitor.getIntervalSeconds()
+                + " 秒，宽限 " + monitor.getHeartbeatGraceSeconds() + " 秒";
+        return summary.length() <= SUMMARY_MAX_LENGTH
+                ? summary
+                : summary.substring(0, SUMMARY_MAX_LENGTH);
     }
 
     private static String summaryFor(int consecutiveFailures, ProbeOutcome outcome) {

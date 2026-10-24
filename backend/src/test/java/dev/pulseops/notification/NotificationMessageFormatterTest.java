@@ -44,6 +44,19 @@ class NotificationMessageFormatterTest {
     }
 
     @Test
+    void formatsHeartbeatTimeoutLabel() {
+        IncidentEntity incident = incident("HEARTBEAT_TIMEOUT",
+                "心跳超时：从未收到心跳，预期间隔 300 秒，宽限 60 秒");
+
+        String message = formatter.format(NotificationEventType.INCIDENT_OPENED, incident, monitor("cron"));
+
+        assertThat(message)
+                .contains("故障告警")
+                .contains("心跳超时")
+                .contains("从未收到心跳");
+    }
+
+    @Test
     void truncatesMessagesToTelegramLimit() {
         IncidentEntity incident = incident("CONNECTION_FAILED", "x".repeat(5000));
 

@@ -30,13 +30,18 @@
 - `DELETE /api/v1/monitors/{id}/heartbeat-token`：撤销当前凭证，幂等返回 `204`；禁用状态的监控项仍允许撤销。
 - 撤销或轮换不删除历史凭证记录，保留审计信息。
 
-## 超时与恢复
-- 若当前时间超过最后一次有效心跳时间加允许间隔和宽限时间，则判定超时。
-- 未收到过任何心跳时，应按创建时间和明确的首次执行宽限规则处理。
-- 超时扫描必须幂等。
-- 同一持续故障只允许一个未解决的 Incident。
-- 收到新的有效心跳后，按约定恢复规则关闭 Incident。
-- 心跳规则独立于 HTTP 连续失败阈值。
+## 超时扫描与恢复
+
+- 截止时间 = `(last_heartbeat_at ?? created_at) + interval_seconds + grace_seconds`。
+- 扫描器按 `pulseops.heartbeat.tick-interval`（默认 5 秒，最小 100ms）运行，每批最多 `batch-size`（默认 100，范围 1–500）个；查询启用的 `HEARTBEAT` 监控项中 `next_check_at <= now` 的记录。
+- 每个监控项在独立事务内锁定 Monitor 后重新校验截止时间，与有效上报串行化。
+- 超时后状态置 `DOWN`，创建唯一未解决 Incident，并写入一条 `HEARTBEAT_TIMEOUT` CheckResult；仅在从"无未解决 Incident"转为创建时写入，重复扫描不重复创建 Incident 或 CheckResult。
+- Incident 的 `started_at` 使用截止时间；summary 包含最后心跳时间（或"从未"）、预期间隔与宽限时间，长度不超过 200 字符。
+- 已有未解决 Incident 时只顺延 `next_check_at`，不修改状态、最后检查时间，也不重复创建 Incident 或 CheckResult。
+- 收到有效上报后立即置 `UP`，关闭未解决 Incident 并生成恢复通知；不使用连续成功阈值。
+- 禁用监控项时静默关闭未解决 Incident，不发送恢复通知；重新启用时置 `UNKNOWN` 并获得完整的间隔加宽限窗口。
+- 修改间隔或宽限时以 `(last_heartbeat_at ?? created_at)` 为基准重算截止时间；若新截止时间已过，由下一轮扫描处理。
+- 心跳规则独立于 HTTP 连续失败阈值；HTTP 探测器拒绝心跳监控项。
 
 ## 验收
 - 有效令牌可上报。
