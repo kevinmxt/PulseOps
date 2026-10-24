@@ -11,7 +11,7 @@ import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorStatus;
 import dev.pulseops.monitor.MonitorType;
 import dev.pulseops.monitor.config.HttpMethod;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.notification.NotificationChannel;
 import dev.pulseops.notification.NotificationDeliveryEntity;
 import dev.pulseops.notification.NotificationDeliveryRepository;

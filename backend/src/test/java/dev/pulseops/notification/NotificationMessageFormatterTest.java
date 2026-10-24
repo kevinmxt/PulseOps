@@ -4,7 +4,7 @@ import dev.pulseops.incident.IncidentEntity;
 import dev.pulseops.incident.IncidentStatus;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorStatus;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

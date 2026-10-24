@@ -1,5 +1,6 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorStatus;

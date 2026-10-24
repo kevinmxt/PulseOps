@@ -2,6 +2,7 @@ package dev.pulseops.monitor.probe;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.MonitorDisabledException;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;

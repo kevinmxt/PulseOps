@@ -7,7 +7,7 @@ import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.MonitorStatus;
 import dev.pulseops.monitor.config.MonitorConfigInput;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.probe.CheckResultRepository;
 import dev.pulseops.monitor.probe.ProbeService;
 import dev.pulseops.monitor.target.TargetPolicy;

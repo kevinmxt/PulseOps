@@ -15,7 +15,7 @@ class ScheduledProbeTicker {
         this.probeScheduler = probeScheduler;
     }
 
-    @Scheduled(fixedDelayString = "${pulseops.probe.tick-interval:1s}")
+    @Scheduled(fixedDelayString = "${pulseops.probe.tick-interval:1s}", scheduler = "probeTickScheduler")
     void tick() {
         probeScheduler.tick();
     }

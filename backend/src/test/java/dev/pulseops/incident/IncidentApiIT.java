@@ -4,7 +4,7 @@ import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.target.TargetPolicy;
 import dev.pulseops.notification.NotificationChannel;
 import dev.pulseops.notification.NotificationDeliveryEntity;

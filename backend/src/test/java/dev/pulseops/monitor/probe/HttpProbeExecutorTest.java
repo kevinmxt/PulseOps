@@ -1,5 +1,6 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.target.ResolverBusyException;
 import org.apache.hc.client5.http.ConnectTimeoutException;
 import org.junit.jupiter.api.Test;

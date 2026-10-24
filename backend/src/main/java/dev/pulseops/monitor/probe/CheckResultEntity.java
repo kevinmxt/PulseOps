@@ -1,5 +1,6 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.monitor.CheckFailureType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
