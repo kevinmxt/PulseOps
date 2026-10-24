@@ -163,6 +163,21 @@ class IncidentApiIT {
     }
 
     @Test
+    void returnsRetryErrorSummaryForPendingDelivery() throws Exception {
+        MonitorEntity monitor = monitor("retry");
+        IncidentEntity incident = incident(monitor.getId(), T1, IncidentStatus.OPEN);
+        pendingDelivery(incident.getId(), NotificationEventType.INCIDENT_OPENED, T2);
+
+        mockMvc.perform(get("/api/v1/incidents/{id}", incident.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveries.length()").value(1))
+                .andExpect(jsonPath("$.deliveries[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.deliveries[0].attemptCount").value(1))
+                .andExpect(jsonPath("$.deliveries[0].lastErrorSummary")
+                        .value("HTTP 500 from Telegram"));
+    }
+
+    @Test
     void returnsNotFoundForUnknownIncident() throws Exception {
         mockMvc.perform(get("/api/v1/incidents/{id}", 999999))
                 .andExpect(status().isNotFound())
@@ -209,6 +224,21 @@ class IncidentApiIT {
         delivery.setNextAttemptAt(attemptedAt);
         delivery.setLastAttemptAt(attemptedAt);
         delivery.setSentAt(sentAt);
+        return notificationDeliveryRepository.save(delivery);
+    }
+
+    private NotificationDeliveryEntity pendingDelivery(Long incidentId,
+                                                       NotificationEventType eventType,
+                                                       Instant attemptedAt) {
+        NotificationDeliveryEntity delivery = new NotificationDeliveryEntity();
+        delivery.setIncidentId(incidentId);
+        delivery.setChannel(NotificationChannel.TELEGRAM);
+        delivery.setEventType(eventType);
+        delivery.setStatus(NotificationDeliveryStatus.PENDING);
+        delivery.setAttemptCount(1);
+        delivery.setNextAttemptAt(attemptedAt.plusSeconds(60));
+        delivery.setLastAttemptAt(attemptedAt);
+        delivery.setLastErrorSummary("HTTP 500 from Telegram");
         return notificationDeliveryRepository.save(delivery);
     }
 

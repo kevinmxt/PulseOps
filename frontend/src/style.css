@@ -125,6 +125,27 @@ a:hover {
   align-items: center;
 }
 
+.inline-label {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.select {
+  padding: 6px 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.delivery-panel {
+  padding: 12px;
+  background: #fafbfc;
+}
+
+.delivery-panel .empty-state {
+  padding: 16px;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -167,6 +188,44 @@ a:hover {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+.detail-section {
+  margin-top: 28px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  padding: 16px;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.config-item dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.config-item dd {
+  margin: 3px 0 0;
+}
+
+.token-hint {
+  margin-top: 12px;
 }
 
 .data-table {
@@ -487,6 +546,10 @@ textarea {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-grid {
     grid-template-columns: 1fr;
   }
 }

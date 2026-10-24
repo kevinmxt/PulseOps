@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { deleteMonitor, listMonitors, updateMonitor } from '../api/client'
 import type { Monitor, PageResponse } from '../api/types'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PaginationControls from '../components/PaginationControls.vue'
 import { useVisiblePolling } from '../composables/useVisiblePolling'
 import { toErrorDetails, type ErrorDetails } from '../lib/apiError'
 import { formatAbsoluteTime, formatLatency, formatRelativeTime } from '../lib/format'
@@ -26,10 +27,6 @@ const error = ref<ErrorDetails | null>(null)
 const actionBusyId = ref<number | null>(null)
 const pendingDelete = ref<Monitor | null>(null)
 let pendingReload = false
-
-const totalPages = computed(() => Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE)))
-const hasPrevious = computed(() => page.value > 0)
-const hasNext = computed(() => page.value + 1 < totalPages.value)
 
 function applyResult(result: PageResponse<Monitor>): void {
   monitors.value = result.items
@@ -72,9 +69,6 @@ function refresh(): void {
 }
 
 function goToPage(target: number): void {
-  if (target < 0 || target >= totalPages.value) {
-    return
-  }
   void load(target)
 }
 
@@ -207,25 +201,13 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
         </tbody>
       </table>
 
-      <nav class="pagination" aria-label="分页">
-        <button
-          class="button"
-          type="button"
-          :disabled="!hasPrevious || refreshing"
-          @click="goToPage(page - 1)"
-        >
-          上一页
-        </button>
-        <span class="muted">第 {{ page + 1 }} / {{ totalPages }} 页</span>
-        <button
-          class="button"
-          type="button"
-          :disabled="!hasNext || refreshing"
-          @click="goToPage(page + 1)"
-        >
-          下一页
-        </button>
-      </nav>
+      <PaginationControls
+        :page="page"
+        :size="PAGE_SIZE"
+        :total-elements="totalElements"
+        :disabled="refreshing"
+        @change="goToPage"
+      />
     </template>
 
     <ConfirmDialog

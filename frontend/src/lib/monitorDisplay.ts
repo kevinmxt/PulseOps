@@ -32,3 +32,11 @@ export function statusClass(status: MonitorStatus, enabled: boolean): string {
 export function typeLabel(type: MonitorType): string {
   return TYPE_LABELS[type]
 }
+
+export function checkResultLabel(success: boolean): string {
+  return success ? '成功' : '失败'
+}
+
+export function checkResultClass(success: boolean): string {
+  return success ? 'status-up' : 'status-down'
+}
