@@ -1,14 +1,24 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { listMonitors } from '../api/client'
+import { ApiError, deleteMonitor, listMonitors, updateMonitor } from '../api/client'
 import type { Monitor, PageResponse } from '../api/types'
 import MonitorListView from './MonitorListView.vue'
 
-vi.mock('../api/client', () => ({
-  listMonitors: vi.fn(),
-}))
+vi.mock('../api/client', async () => {
+  const actual = await vi.importActual<typeof import('../api/client')>('../api/client')
+  return {
+    ...actual,
+    createMonitor: vi.fn(),
+    deleteMonitor: vi.fn(),
+    getMonitor: vi.fn(),
+    listMonitors: vi.fn(),
+    updateMonitor: vi.fn(),
+  }
+})
 
 const listMonitorsMock = vi.mocked(listMonitors)
+const updateMonitorMock = vi.mocked(updateMonitor)
+const deleteMonitorMock = vi.mocked(deleteMonitor)
 
 function monitor(overrides: Partial<Monitor> = {}): Monitor {
   return {
@@ -66,6 +76,8 @@ function buttonByText(wrapper: ReturnType<typeof mountView>, text: string) {
 describe('MonitorListView', () => {
   beforeEach(() => {
     listMonitorsMock.mockReset()
+    updateMonitorMock.mockReset()
+    deleteMonitorMock.mockReset()
   })
 
   afterEach(() => {
@@ -180,6 +192,140 @@ describe('MonitorListView', () => {
     expect(listMonitorsMock).toHaveBeenLastCalledWith(0, 20)
     expect(wrapper.text()).toContain('第 1 / 1 页')
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
+  it('offers a link to create a monitor', async () => {
+    listMonitorsMock.mockResolvedValue(page([]))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('a[href="/monitors/new"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('toggles enabled with the complete monitor payload and reloads', async () => {
+    const target = monitor({ id: 5, name: 'Toggle' })
+    listMonitorsMock.mockResolvedValue(page([target]))
+    updateMonitorMock.mockResolvedValue(target)
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '禁用').trigger('click')
+    await flushPromises()
+
+    expect(updateMonitorMock).toHaveBeenCalledWith(5, {
+      name: 'Toggle',
+      type: 'HTTP',
+      targetUrl: 'http://8.8.8.8/health',
+      method: 'GET',
+      intervalSeconds: 60,
+      connectTimeoutMs: 3000,
+      responseTimeoutMs: 10000,
+      expectedStatusMin: 200,
+      expectedStatusMax: 299,
+      enabled: false,
+      failureThreshold: 3,
+      recoveryThreshold: 2,
+      heartbeatGraceSeconds: 60,
+    })
+    expect(listMonitorsMock).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+  })
+
+  it('deletes only after confirmation and reloads', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor({ id: 6, name: 'Delete me' })]))
+    deleteMonitorMock.mockResolvedValue(undefined)
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    expect(wrapper.text()).toContain('删除监控项')
+
+    await buttonByText(wrapper, '确认删除').trigger('click')
+    await flushPromises()
+
+    expect(deleteMonitorMock).toHaveBeenCalledWith(6)
+    expect(listMonitorsMock).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+  })
+
+  it('does not delete when the confirmation is cancelled', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor()]))
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    await buttonByText(wrapper, '取消').trigger('click')
+    await flushPromises()
+
+    expect(deleteMonitorMock).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('cancels the delete dialog with Escape', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor()]))
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(deleteMonitorMock).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('keeps the dialog and shows error details when delete fails', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor({ id: 7, name: 'Keep me' })]))
+    deleteMonitorMock.mockRejectedValue(
+      new ApiError('删除失败', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-7',
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    await buttonByText(wrapper, '确认删除').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('INTERNAL_ERROR')
+    expect(wrapper.text()).toContain('删除失败')
+    expect(wrapper.text()).toContain('trace-7')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('shows error details when toggling fails', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor()]))
+    updateMonitorMock.mockRejectedValue(
+      new ApiError('更新失败', {
+        code: 'VALIDATION_ERROR',
+        status: 400,
+        traceId: 'trace-6',
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '禁用').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('VALIDATION_ERROR')
+    expect(wrapper.text()).toContain('更新失败')
+    expect(wrapper.text()).toContain('trace-6')
 
     wrapper.unmount()
   })
