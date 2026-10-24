@@ -14,7 +14,6 @@ import dev.pulseops.monitor.MonitorStatus;
 import dev.pulseops.monitor.MonitorType;
 import dev.pulseops.monitor.probe.CheckResultEntity;
 import dev.pulseops.monitor.probe.CheckResultRepository;
-import dev.pulseops.notification.NotificationDeliveryEntity;
 import dev.pulseops.notification.NotificationDeliveryRepository;
 import dev.pulseops.notification.NotificationDeliveryStatus;
 import dev.pulseops.notification.NotificationDispatcher;
@@ -163,7 +162,7 @@ class Phase3RestartIT {
     }
 
     private static MonitorEntity heartbeat(String name, Instant nextCheckAt) {
-        Instant createdAt = nextCheckAt.minusSeconds(300);
+        Instant createdAt = nextCheckAt.minusSeconds(60 + 60);
         MonitorEntity monitor = new MonitorEntity();
         monitor.setName(name);
         monitor.setType(MonitorType.HEARTBEAT);

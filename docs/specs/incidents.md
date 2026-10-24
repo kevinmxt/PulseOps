@@ -47,7 +47,6 @@ MVP 优先支持 Telegram Bot。
 - Incident 创建/关闭与 NotificationDelivery 写入同一事务；发送由独立调度线程完成，使用固定延迟轮询，不在探测事务内发起网络请求。
 - 渠道未配置（Bot Token 与 Chat ID 均缺失）时不生成投递行；只配置其中一个时应用启动失败。
 - 禁用 Monitor 关闭 Incident 时不生成恢复通知。
-- 心跳超时扫描使用独立单线程调度器，与 HTTP 探测、通知发送互不阻塞。
 - 投递采用 at-least-once 语义，见 [ADR-0005](../adr/0005-transactional-outbox-notifications.md)。
 - 投递状态通过 Incident 详情暴露。
 - 网络错误、5xx 与 429 可重试：最多 3 次尝试，第 1、2 次失败后分别退避 1 分钟与 5 分钟；非 429 的 4xx 立即进入终态 `FAILED`。
