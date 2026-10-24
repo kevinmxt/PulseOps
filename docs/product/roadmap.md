@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 3 已完成（CI 与验收证据见 [`quality/phase3-acceptance.md`](../quality/phase3-acceptance.md)）；下一阶段为 Phase 4A — 最小可用 UI。
+Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；下一阶段为 Phase 4B — 认证与数据维护。
 
 ## 阶段顺序
 
@@ -61,14 +61,14 @@ Phase 3 已完成（CI 与验收证据见 [`quality/phase3-acceptance.md`](../qu
 完成条件：有效令牌可上报，无效/撤销令牌被拒绝；超时可触发故障；重复扫描不会创建重复事件。完成证据见 [`quality/phase3-acceptance.md`](../quality/phase3-acceptance.md)。
 
 ### Phase 4A：最小可用 UI
-- [ ] 监控项列表、创建、编辑、禁用和删除
-- [ ] 当前状态、最近检查时间与延迟
-- [ ] 历史结果分页、活动 Incident 与通知状态
-- [ ] 心跳配置与上报命令展示
+- [x] 监控项列表、创建、编辑、禁用和删除
+- [x] 当前状态、最近检查时间与延迟
+- [x] 历史结果分页、活动 Incident 与通知状态
+- [x] 心跳配置与上报命令展示
 
 非目标：图表大屏、复杂主题、自定义仪表盘。
 
-完成条件：核心功能可仅通过 UI 完成。
+完成条件：核心功能可仅通过 UI 完成。完成证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)。
 
 ### Phase 4B：认证与数据维护（公网前硬门槛）
 - [ ] 单用户认证与授权，覆盖所有管理 API
