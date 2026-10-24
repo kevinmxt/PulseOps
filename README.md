@@ -2,7 +2,7 @@
 
 面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任务心跳监控平台。
 
-项目当前处于 **Phase 3 已完成、下一阶段 Phase 4A：最小可用 UI**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)。
+项目当前处于 **Phase 4A 已完成、下一阶段 Phase 4B：认证与数据维护**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)，Phase 4A 证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)。
 
 ## 目录结构
 
@@ -50,6 +50,17 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
    ```
 
    Vite 开发服务器已将 `/api` 和 `/actuator` 代理到 `http://localhost:8080`。
+
+## UI
+
+启动后端与前端后访问 `http://localhost:5173`。当前 UI 支持：
+
+- 监控项列表与状态、最近检查时间、Probe Latency。
+- HTTP 与 Heartbeat 监控项的创建、编辑、启用/禁用与删除。
+- 检查历史分页、活动 Incident、Incident 过滤与通知投递状态。
+- 心跳一次性令牌、上报命令、轮换与撤销。
+
+管理 API 默认只监听回环地址，Phase 4A 未启用认证；在 Phase 4B 完成前不得将 UI 或管理 API 暴露到公网。
 
 ## 配置
 
@@ -122,7 +133,7 @@ npm test         # Vitest 契约测试
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)，历史证据见 [`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)，历史证据见 [`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)、[`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 
