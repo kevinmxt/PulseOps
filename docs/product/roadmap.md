@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 2 已完成（CI 与验收证据见 [`quality/phase2-acceptance.md`](../quality/phase2-acceptance.md)）；下一阶段为 Phase 3 — Heartbeat。
+Phase 3 已完成（CI 与验收证据见 [`quality/phase3-acceptance.md`](../quality/phase3-acceptance.md)）；下一阶段为 Phase 4A — 最小可用 UI。
 
 ## 阶段顺序
 
@@ -58,7 +58,7 @@ Phase 2 已完成（CI 与验收证据见 [`quality/phase2-acceptance.md`](../qu
 - [x] 超时扫描
 - [x] 故障与恢复通知
 
-完成条件：有效令牌可上报，无效/撤销令牌被拒绝；超时可触发故障；重复扫描不会创建重复事件。
+完成条件：有效令牌可上报，无效/撤销令牌被拒绝；超时可触发故障；重复扫描不会创建重复事件。完成证据见 [`quality/phase3-acceptance.md`](../quality/phase3-acceptance.md)。
 
 ### Phase 4A：最小可用 UI
 - [ ] 监控项列表、创建、编辑、禁用和删除

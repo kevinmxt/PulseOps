@@ -55,7 +55,7 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 ## 安全约束
 - 管理接口必须受认证和授权保护；Phase 4B 前仅允许回环地址访问，具体门槛见 [`../quality/deployment.md`](../quality/deployment.md) 与 [ADR-0003](../adr/0003-defer-admin-auth.md)。
-- 心跳令牌独立于管理凭证。
+- 心跳令牌独立于管理凭证；上报接口仅通过令牌识别监控项。
 - 不在响应或日志中暴露秘密。
 - `/actuator/health` 只返回必要的健康信息。
 - Actuator 端点只随应用监听地址暴露（默认 `127.0.0.1`），不得直接对公网开放。
