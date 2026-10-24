@@ -14,7 +14,8 @@ public class ScheduledNotificationTicker {
         this.notificationDispatcher = notificationDispatcher;
     }
 
-    @Scheduled(fixedDelayString = "${pulseops.notification.dispatch-interval:5s}")
+    @Scheduled(fixedDelayString = "${pulseops.notification.dispatch-interval:5s}",
+            scheduler = "notificationTickScheduler")
     public void tick() {
         notificationDispatcher.dispatchDue();
     }

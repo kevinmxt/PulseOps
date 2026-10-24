@@ -9,7 +9,7 @@ import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.probe.CheckResultRepository;
 import dev.pulseops.monitor.probe.ProbeService;
 import dev.pulseops.monitor.target.TargetPolicy;
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -29,6 +30,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -110,7 +112,8 @@ class NotificationFlowIT {
     MeterRegistry meterRegistry;
 
     @Autowired
-    org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler taskScheduler;
+    @Qualifier("notificationTickScheduler")
+    ThreadPoolTaskScheduler notificationTickScheduler;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class NotificationTestConfiguration {
@@ -340,7 +343,8 @@ class NotificationFlowIT {
 
     @Test
     void runsNotificationsOnADedicatedSchedulerPool() {
-        assertThat(taskScheduler.getScheduledThreadPoolExecutor().getCorePoolSize()).isEqualTo(2);
+        assertThat(notificationTickScheduler.getScheduledThreadPoolExecutor().getCorePoolSize())
+                .isEqualTo(1);
     }
 
     @Test

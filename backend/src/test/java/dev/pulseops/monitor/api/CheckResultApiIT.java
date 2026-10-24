@@ -5,7 +5,7 @@ import dev.pulseops.monitor.MonitorRepository;
 import dev.pulseops.monitor.MonitorStatus;
 import dev.pulseops.monitor.MonitorType;
 import dev.pulseops.monitor.config.HttpMethod;
-import dev.pulseops.monitor.probe.CheckFailureType;
+import dev.pulseops.monitor.CheckFailureType;
 import dev.pulseops.monitor.probe.CheckResultEntity;
 import dev.pulseops.monitor.probe.CheckResultRepository;
 import org.junit.jupiter.api.BeforeEach;

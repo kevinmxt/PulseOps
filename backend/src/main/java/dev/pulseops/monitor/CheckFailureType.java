@@ -1,4 +1,4 @@
-package dev.pulseops.monitor.probe;
+package dev.pulseops.monitor;
 
 public enum CheckFailureType {
     CONNECTION_FAILED("连接失败"),

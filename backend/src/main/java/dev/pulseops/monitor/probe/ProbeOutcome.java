@@ -1,5 +1,7 @@
 package dev.pulseops.monitor.probe;
 
+import dev.pulseops.monitor.CheckFailureType;
+
 import java.time.Instant;
 
 public record ProbeOutcome(

@@ -90,7 +90,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `pulseops.notification.batch-size` | `50` | 每轮最多处理的投递数 |
 | `pulseops.notification.scheduling-enabled` | `true` | 是否启用自动投递；集成测试中关闭并手动调用 |
 
-投递与探测使用同一调度线程池但各自独立的调度任务，线程池大小固定为 2（`spring.task.scheduling.pool.size`），避免通知发送阻塞探测 tick。
+投递与探测各自使用独立的单线程调度器（`probeTickScheduler` / `notificationTickScheduler`），一个 tick 阻塞不会影响另一个；新增 ticker 必须声明自己的调度器，测试会校验非空且全局唯一。
 
 失败重试：网络错误、5xx 与 429 最多尝试 3 次，退避 1 分钟与 5 分钟；非 429 的 4xx 直接进入 `FAILED`。重启后只续发 `PENDING` 投递，已发送的不会重发。
 
