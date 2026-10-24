@@ -26,13 +26,11 @@ public record MonitorResponse(
         Instant lastHeartbeatAt,
         Instant createdAt,
         Instant updatedAt,
-        String heartbeatToken) {
+        String heartbeatToken,
+        Long lastCheckDurationMs) {
 
-    public static MonitorResponse from(MonitorEntity monitor) {
-        return from(monitor, null);
-    }
-
-    public static MonitorResponse from(MonitorEntity monitor, String heartbeatToken) {
+    public static MonitorResponse from(MonitorEntity monitor, String heartbeatToken,
+                                       Long lastCheckDurationMs) {
         boolean http = monitor.getType() == MonitorType.HTTP;
         return new MonitorResponse(
                 monitor.getId(),
@@ -55,6 +53,7 @@ public record MonitorResponse(
                 monitor.getLastHeartbeatAt(),
                 monitor.getCreatedAt(),
                 monitor.getUpdatedAt(),
-                heartbeatToken);
+                heartbeatToken,
+                http ? lastCheckDurationMs : null);
     }
 }

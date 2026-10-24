@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;
+import dev.pulseops.monitor.probe.CheckResultEntity;
+import dev.pulseops.monitor.probe.CheckResultRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -46,6 +50,9 @@ class MonitorApiIT {
 
     @Autowired
     MonitorRepository repository;
+
+    @Autowired
+    CheckResultRepository checkResultRepository;
 
     @Autowired
     Environment environment;
@@ -374,6 +381,100 @@ class MonitorApiIT {
         mockMvc.perform(get("/api/v1/monitors").param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void returnsLatestCheckDurationForHttpMonitor() throws Exception {
+        long id = create("with checks");
+        saveCheckResult(id, Instant.parse("2026-10-24T08:00:00Z"), 120);
+        saveCheckResult(id, Instant.parse("2026-10-24T08:01:00Z"), 87);
+
+        mockMvc.perform(get("/api/v1/monitors/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastCheckDurationMs").value(87));
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "0").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs").value(87));
+    }
+
+    @Test
+    void returnsNullDurationWhenNoChecksExist() throws Exception {
+        long id = create("no checks");
+
+        mockMvc.perform(get("/api/v1/monitors/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastCheckDurationMs")
+                        .value(org.hamcrest.Matchers.nullValue()));
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "0").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(id))
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs")
+                        .value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void returnsNullDurationForHeartbeatMonitorEvenWithCheckResult() throws Exception {
+        long id = createHeartbeat("heartbeat");
+        saveCheckResult(id, Instant.parse("2026-10-24T08:02:00Z"), 0);
+
+        mockMvc.perform(get("/api/v1/monitors/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastCheckDurationMs")
+                        .value(org.hamcrest.Matchers.nullValue()));
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "0").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(id))
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs")
+                        .value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void returnsDurationsForMonitorsAcrossPages() throws Exception {
+        long first = create("first");
+        long second = create("second");
+        long third = create("third");
+        saveCheckResult(first, Instant.parse("2026-10-24T08:00:00Z"), 11);
+        saveCheckResult(second, Instant.parse("2026-10-24T08:00:00Z"), 22);
+        saveCheckResult(third, Instant.parse("2026-10-24T08:00:00Z"), 33);
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "0").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("third"))
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs").value(33))
+                .andExpect(jsonPath("$.items[1].name").value("second"))
+                .andExpect(jsonPath("$.items[1].lastCheckDurationMs").value(22));
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("first"))
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs").value(11));
+    }
+
+    private long createHeartbeat(String name) throws Exception {
+        String body = """
+                {"name":"%s","type":"HEARTBEAT","intervalSeconds":300}
+                """.formatted(name);
+        String response = mockMvc.perform(post("/api/v1/monitors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("id").asLong();
+    }
+
+    private void saveCheckResult(long monitorId, Instant startedAt, long durationMs) {
+        CheckResultEntity result = new CheckResultEntity();
+        result.setMonitorId(monitorId);
+        result.setStartedAt(startedAt);
+        result.setFinishedAt(startedAt.plusMillis(durationMs));
+        result.setDurationMs(durationMs);
+        result.setSuccess(true);
+        checkResultRepository.save(result);
     }
 
     private long create(String name) throws Exception {
