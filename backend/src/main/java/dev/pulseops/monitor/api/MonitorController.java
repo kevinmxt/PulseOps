@@ -1,6 +1,7 @@
 package dev.pulseops.monitor.api;
 
 import dev.pulseops.common.PageResponse;
+import dev.pulseops.monitor.MonitorCreationResult;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorService;
 import dev.pulseops.monitor.config.MonitorConfigInput;
@@ -38,12 +39,13 @@ public class MonitorController {
 
     @PostMapping
     public ResponseEntity<MonitorResponse> create(@RequestBody MonitorConfigInput request) {
-        MonitorEntity created = monitorService.create(request);
+        MonitorCreationResult created = monitorService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.monitor().getId())
                 .toUri();
-        return ResponseEntity.created(location).body(MonitorResponse.from(created));
+        return ResponseEntity.created(location)
+                .body(MonitorResponse.from(created.monitor(), created.heartbeatToken()));
     }
 
     @GetMapping

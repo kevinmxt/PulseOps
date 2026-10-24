@@ -323,7 +323,7 @@ class ThresholdStatusIT {
                 299,
                 true,
                 failureThreshold,
-                recoveryThreshold));
+                recoveryThreshold)).monitor();
     }
 
     private MonitorEntity updateConfig(MonitorEntity monitor, int intervalSeconds, boolean enabled,

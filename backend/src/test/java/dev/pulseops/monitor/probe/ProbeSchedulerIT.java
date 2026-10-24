@@ -478,7 +478,7 @@ class ProbeSchedulerIT {
     }
 
     private MonitorEntity createMonitor(String name, boolean enabled, int intervalSeconds, String path) {
-        return monitorService.create(config(name, enabled, intervalSeconds, path));
+        return monitorService.create(config(name, enabled, intervalSeconds, path)).monitor();
     }
 
     private MonitorConfigInput config(String name, boolean enabled, int intervalSeconds, String path) {

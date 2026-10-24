@@ -396,7 +396,7 @@ class IncidentLifecycleIT {
                 299,
                 true,
                 failureThreshold,
-                null));
+                null)).monitor();
     }
 
     private void updateEnabled(MonitorEntity monitor, boolean enabled) {

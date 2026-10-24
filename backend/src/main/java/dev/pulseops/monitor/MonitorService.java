@@ -1,7 +1,12 @@
 package dev.pulseops.monitor;
 
 import dev.pulseops.common.PageQueries;
+import dev.pulseops.heartbeat.HeartbeatCredentialEntity;
+import dev.pulseops.heartbeat.HeartbeatCredentialRepository;
+import dev.pulseops.heartbeat.HeartbeatTokenGenerator;
 import dev.pulseops.incident.IncidentService;
+import dev.pulseops.monitor.config.HeartbeatConfig;
+import dev.pulseops.monitor.config.InvalidMonitorConfigException;
 import dev.pulseops.monitor.config.MonitorConfig;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.config.MonitorConfigValidator;
@@ -16,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 
 @Service
 public class MonitorService {
@@ -24,19 +30,32 @@ public class MonitorService {
     private final MonitorConfigValidator configValidator;
     private final TargetPolicy targetPolicy;
     private final IncidentService incidentService;
+    private final HeartbeatCredentialRepository heartbeatCredentialRepository;
+    private final HeartbeatTokenGenerator heartbeatTokenGenerator;
     private final Clock clock;
 
     public MonitorService(MonitorRepository repository, MonitorConfigValidator configValidator,
-                          TargetPolicy targetPolicy, IncidentService incidentService, Clock clock) {
+                          TargetPolicy targetPolicy, IncidentService incidentService,
+                          HeartbeatCredentialRepository heartbeatCredentialRepository,
+                          HeartbeatTokenGenerator heartbeatTokenGenerator, Clock clock) {
         this.repository = repository;
         this.configValidator = configValidator;
         this.targetPolicy = targetPolicy;
         this.incidentService = incidentService;
+        this.heartbeatCredentialRepository = heartbeatCredentialRepository;
+        this.heartbeatTokenGenerator = heartbeatTokenGenerator;
         this.clock = clock;
     }
 
     @Transactional
-    public MonitorEntity create(MonitorConfigInput input) {
+    public MonitorCreationResult create(MonitorConfigInput input) {
+        return switch (configValidator.parseType(input.type())) {
+            case HTTP -> new MonitorCreationResult(createHttp(input), null);
+            case HEARTBEAT -> createHeartbeat(input);
+        };
+    }
+
+    private MonitorEntity createHttp(MonitorConfigInput input) {
         MonitorConfig config = configValidator.validate(input);
         validateTarget(config.targetUrl());
 
@@ -49,6 +68,32 @@ public class MonitorService {
         monitor.setCreatedAt(now);
         monitor.setUpdatedAt(now);
         return repository.save(monitor);
+    }
+
+    private MonitorCreationResult createHeartbeat(MonitorConfigInput input) {
+        HeartbeatConfig config = configValidator.validateHeartbeat(input);
+
+        Instant now = clock.instant();
+        MonitorEntity monitor = new MonitorEntity();
+        monitor.setName(config.name());
+        monitor.setType(MonitorType.HEARTBEAT);
+        monitor.setIntervalSeconds(config.intervalSeconds());
+        monitor.setHeartbeatGraceSeconds(config.graceSeconds());
+        monitor.setEnabled(config.enabled());
+        monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
+        monitor.setCreatedAt(now);
+        monitor.setUpdatedAt(now);
+        monitor.setNextCheckAt(heartbeatDeadline(monitor));
+        monitor = repository.save(monitor);
+
+        String token = heartbeatTokenGenerator.generate();
+        HeartbeatCredentialEntity credential = new HeartbeatCredentialEntity();
+        credential.setMonitorId(monitor.getId());
+        credential.setTokenHash(heartbeatTokenGenerator.digest(token));
+        credential.setCreatedAt(now);
+        heartbeatCredentialRepository.save(credential);
+
+        return new MonitorCreationResult(monitor, token);
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +112,18 @@ public class MonitorService {
     public MonitorEntity update(Long id, MonitorConfigInput input) {
         MonitorEntity monitor = repository.findByIdForUpdate(id)
                 .orElseThrow(() -> new MonitorNotFoundException(id));
+        MonitorType requestedType = input.type() == null || input.type().isBlank()
+                ? monitor.getType()
+                : configValidator.parseType(input.type());
+        if (requestedType != monitor.getType()) {
+            throw InvalidMonitorConfigException.validation("type", "cannot be changed after creation");
+        }
+        return monitor.getType() == MonitorType.HTTP
+                ? updateHttp(monitor, input)
+                : updateHeartbeat(monitor, input);
+    }
+
+    private MonitorEntity updateHttp(MonitorEntity monitor, MonitorConfigInput input) {
         MonitorConfig config = configValidator.validate(input);
         validateTarget(config.targetUrl());
 
@@ -93,6 +150,41 @@ public class MonitorService {
             monitor.setNextCheckAt(monitor.getUpdatedAt());
         }
         return repository.save(monitor);
+    }
+
+    private MonitorEntity updateHeartbeat(MonitorEntity monitor, MonitorConfigInput input) {
+        HeartbeatConfig config = configValidator.validateHeartbeat(input);
+
+        boolean wasEnabled = monitor.isEnabled();
+        boolean becameEnabled = !wasEnabled && config.enabled();
+        boolean becameDisabled = wasEnabled && !config.enabled();
+        boolean deadlineConfigChanged = monitor.getIntervalSeconds() != config.intervalSeconds()
+                || !Objects.equals(monitor.getHeartbeatGraceSeconds(), config.graceSeconds());
+
+        monitor.setName(config.name());
+        monitor.setIntervalSeconds(config.intervalSeconds());
+        monitor.setHeartbeatGraceSeconds(config.graceSeconds());
+        monitor.setEnabled(config.enabled());
+        if (becameEnabled) {
+            monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
+        } else if (becameDisabled) {
+            incidentService.closeOpenIncidentSilently(monitor.getId(), clock.instant());
+        }
+        monitor.setUpdatedAt(clock.instant());
+        if (becameEnabled) {
+            monitor.setNextCheckAt(monitor.getUpdatedAt().plusSeconds(
+                    config.intervalSeconds() + config.graceSeconds()));
+        } else if (deadlineConfigChanged) {
+            monitor.setNextCheckAt(heartbeatDeadline(monitor));
+        }
+        return repository.save(monitor);
+    }
+
+    private static Instant heartbeatDeadline(MonitorEntity monitor) {
+        Instant base = monitor.getLastHeartbeatAt() != null
+                ? monitor.getLastHeartbeatAt()
+                : monitor.getCreatedAt();
+        return base.plusSeconds(monitor.getIntervalSeconds() + monitor.getHeartbeatGraceSeconds());
     }
 
     @Transactional

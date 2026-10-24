@@ -27,27 +27,27 @@ public class MonitorEntity {
     @Column(nullable = false, length = 20)
     private MonitorType type;
 
-    @Column(name = "target_url", nullable = false, length = 2048)
+    @Column(name = "target_url", length = 2048)
     private String targetUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(length = 10)
     private HttpMethod method;
 
     @Column(name = "interval_seconds", nullable = false)
     private int intervalSeconds;
 
-    @Column(name = "connect_timeout_ms", nullable = false)
-    private int connectTimeoutMs;
+    @Column(name = "connect_timeout_ms")
+    private Integer connectTimeoutMs;
 
-    @Column(name = "response_timeout_ms", nullable = false)
-    private int responseTimeoutMs;
+    @Column(name = "response_timeout_ms")
+    private Integer responseTimeoutMs;
 
-    @Column(name = "expected_status_min", nullable = false)
-    private int expectedStatusMin;
+    @Column(name = "expected_status_min")
+    private Integer expectedStatusMin;
 
-    @Column(name = "expected_status_max", nullable = false)
-    private int expectedStatusMax;
+    @Column(name = "expected_status_max")
+    private Integer expectedStatusMax;
 
     @Column(nullable = false)
     private boolean enabled;
@@ -61,6 +61,12 @@ public class MonitorEntity {
 
     @Column(name = "last_success_at")
     private Instant lastSuccessAt;
+
+    @Column(name = "last_heartbeat_at")
+    private Instant lastHeartbeatAt;
+
+    @Column(name = "heartbeat_grace_seconds")
+    private Integer heartbeatGraceSeconds;
 
     @Column(name = "next_check_at", nullable = false)
     private Instant nextCheckAt;
@@ -130,35 +136,35 @@ public class MonitorEntity {
         this.intervalSeconds = intervalSeconds;
     }
 
-    public int getConnectTimeoutMs() {
+    public Integer getConnectTimeoutMs() {
         return connectTimeoutMs;
     }
 
-    public void setConnectTimeoutMs(int connectTimeoutMs) {
+    public void setConnectTimeoutMs(Integer connectTimeoutMs) {
         this.connectTimeoutMs = connectTimeoutMs;
     }
 
-    public int getResponseTimeoutMs() {
+    public Integer getResponseTimeoutMs() {
         return responseTimeoutMs;
     }
 
-    public void setResponseTimeoutMs(int responseTimeoutMs) {
+    public void setResponseTimeoutMs(Integer responseTimeoutMs) {
         this.responseTimeoutMs = responseTimeoutMs;
     }
 
-    public int getExpectedStatusMin() {
+    public Integer getExpectedStatusMin() {
         return expectedStatusMin;
     }
 
-    public void setExpectedStatusMin(int expectedStatusMin) {
+    public void setExpectedStatusMin(Integer expectedStatusMin) {
         this.expectedStatusMin = expectedStatusMin;
     }
 
-    public int getExpectedStatusMax() {
+    public Integer getExpectedStatusMax() {
         return expectedStatusMax;
     }
 
-    public void setExpectedStatusMax(int expectedStatusMax) {
+    public void setExpectedStatusMax(Integer expectedStatusMax) {
         this.expectedStatusMax = expectedStatusMax;
     }
 
@@ -192,6 +198,22 @@ public class MonitorEntity {
 
     public void setLastSuccessAt(Instant lastSuccessAt) {
         this.lastSuccessAt = lastSuccessAt;
+    }
+
+    public Instant getLastHeartbeatAt() {
+        return lastHeartbeatAt;
+    }
+
+    public void setLastHeartbeatAt(Instant lastHeartbeatAt) {
+        this.lastHeartbeatAt = lastHeartbeatAt;
+    }
+
+    public Integer getHeartbeatGraceSeconds() {
+        return heartbeatGraceSeconds;
+    }
+
+    public void setHeartbeatGraceSeconds(Integer heartbeatGraceSeconds) {
+        this.heartbeatGraceSeconds = heartbeatGraceSeconds;
     }
 
     public Instant getNextCheckAt() {
