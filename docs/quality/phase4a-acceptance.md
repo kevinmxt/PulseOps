@@ -13,15 +13,15 @@
 
 工作流：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)。每次 PR 在干净 checkout 上运行后端 `./mvnw verify`（Testcontainers PostgreSQL 17）与前端 `npm ci && npm test && npm run build`。
 
-| Ticket | PR | PR checks | 合并提交 |
-|---|---|---|---|
-| #45 前端骨架与测试基础设施 | [#51](https://github.com/kevinmxt/PulseOps/pull/51) | [checks](https://github.com/kevinmxt/PulseOps/pull/51/checks) | `a3c383a` |
-| #46 监控列表与探测延迟 | [#52](https://github.com/kevinmxt/PulseOps/pull/52) | [checks](https://github.com/kevinmxt/PulseOps/pull/52/checks) | `fe19a69` |
-| #47 HTTP 配置闭环 | [#53](https://github.com/kevinmxt/PulseOps/pull/53) | [checks](https://github.com/kevinmxt/PulseOps/pull/53/checks) | `52ade49` |
-| #48 心跳配置与令牌 | [#54](https://github.com/kevinmxt/PulseOps/pull/54) | [checks](https://github.com/kevinmxt/PulseOps/pull/54/checks) | `0f1ca3d` |
-| #49 详情、历史与投递状态 | [#55](https://github.com/kevinmxt/PulseOps/pull/55) | [checks](https://github.com/kevinmxt/PulseOps/pull/55/checks) | `3e2ba2d` |
+| Ticket | PR | PR checks | 结论 | 合并提交 |
+|---|---|---|---|---|
+| #45 前端骨架与测试基础设施 | [#51](https://github.com/kevinmxt/PulseOps/pull/51) | [checks](https://github.com/kevinmxt/PulseOps/pull/51/checks) | success | `a3c383a` |
+| #46 监控列表与探测延迟 | [#52](https://github.com/kevinmxt/PulseOps/pull/52) | [checks](https://github.com/kevinmxt/PulseOps/pull/52/checks) | success | `fe19a69` |
+| #47 HTTP 配置闭环 | [#53](https://github.com/kevinmxt/PulseOps/pull/53) | [checks](https://github.com/kevinmxt/PulseOps/pull/53/checks) | success | `52ade49` |
+| #48 心跳配置与令牌 | [#54](https://github.com/kevinmxt/PulseOps/pull/54) | [checks](https://github.com/kevinmxt/PulseOps/pull/54/checks) | success | `0f1ca3d` |
+| #49 详情、历史与投递状态 | [#55](https://github.com/kevinmxt/PulseOps/pull/55) | [checks](https://github.com/kevinmxt/PulseOps/pull/55/checks) | success | `3e2ba2d` |
 
-本文件所属收口 PR 的 checks 页面记录在 #50 的完成报告中。按仓库测试与评审节奏，不为补充本文件中的链接再触发额外 CI。
+本文件所属收口 PR 的 checks 页面与父 issue #43 的阶段完成报告记录最终结果。按仓库测试与评审节奏，不为补充本文件中的链接再触发额外 CI。
 
 ## 本地执行记录
 
@@ -38,7 +38,7 @@ npm run build
 
 结果：
 
-- 后端：183 个测试，0 失败，`BUILD SUCCESS`（集成测试使用 Testcontainers PostgreSQL 17）。
+- 后端：单元测试 145 个、集成测试 183 个，合计 328 个，0 失败，`BUILD SUCCESS`（集成测试使用 Testcontainers PostgreSQL 17）。
 - 前端：104 个测试通过。
 - 前端生产构建通过。
 
@@ -49,7 +49,7 @@ npm run build
 ### 环境与数据
 
 - 后端监听 `127.0.0.1:8080`，PostgreSQL 17 由 Docker Compose 提供。
-- 前端 Vite 开发服务器监听 `127.0.0.1:5175`，通过 `/api` 代理访问后端。
+- 前端 Vite 开发服务器监听 `127.0.0.1:5175`（为避免本机端口占用，使用 `--port 5175`；默认端口为 5173），通过 `/api` 代理访问后端。
 - 浏览器：Microsoft Edge 156 headless，通过 Chrome DevTools Protocol 驱动；未引入 Playwright 或新的 E2E 依赖。
 - 数据来源：真实 HTTP 探测（`CONNECT_TIMEOUT`）、真实心跳超时与恢复、真实通知 outbox 调度。
 - 通知验证使用本地假 Telegram 端点，分别返回 500 / 200 / 400，以产生真实的 `PENDING` / `SENT` / `FAILED` 投递记录；未使用数据库直写数据作为证据。
@@ -65,6 +65,9 @@ npm run build
 | 列表行内禁用 | 通过 | 无需确认，状态列显示「已禁用」 |
 | 删除二次确认 | 通过 | 确认后列表刷新且记录消失 |
 | 通过 UI 创建 Heartbeat Monitor | 通过 | 类型选择、名称、间隔、宽限均可用 |
+| 通过 UI 编辑 Heartbeat Monitor | 通过 | 修改间隔与宽限后保存，表单回填服务端值 |
+| 心跳监控列表禁用/启用 | 通过 | 两态切换生效，无需确认 |
+| 心跳监控删除 | 通过 | 二次确认后列表刷新 |
 | 一次性令牌与上报命令 | 通过 | 创建后展示令牌与 `curl` 命令 |
 | 命令使用当前 origin | 通过 | 命令包含 `http://127.0.0.1:5175/api/v1/heartbeats/<token>` |
 | 令牌不进入 URL | 通过 | 展示后路径仍为 `/monitors/new` |
@@ -88,7 +91,7 @@ npm run build
 
 - 复制令牌/命令的成功与剪贴板失败回退：由 `MonitorCreateView.test.ts` 覆盖。
 - 历史分页控件渲染、翻页请求与页码映射：由 `MonitorDetailView.test.ts` 覆盖。
-- 浏览器前进/后退与深层链接：路由使用 history 模式，`App.test.ts` 覆盖路由渲染；未单独手动点击后退。
+- 浏览器前进/后退：深层链接在走查中通过直接访问验证；后退未单独手动点击，路由渲染由 `App.test.ts` 覆盖。
 - 列表删除最后一页最后一项后的页码回退：由 `MonitorListView.test.ts` 覆盖。
 - 并发投递展开的过期响应保护：由 `IncidentListView.test.ts` 覆盖。
 
@@ -137,7 +140,8 @@ npm run build
 
 ### #50 阶段验收与文档
 
-- 本文件、`docs/product/roadmap.md`、`README.md`、`docs/index.md`、`docs/specs/api.md`。
+- 本文件、`docs/product/roadmap.md`、`README.md`、`docs/index.md`。
+- `docs/specs/api.md` 已核对：`lastCheckDurationMs` 与 PENDING 摘要语义与实现一致（规范阶段更新）。
 - 最终本地全量验证与 PR checks。
 
 ## 已知限制与残余风险
