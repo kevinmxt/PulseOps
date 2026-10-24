@@ -7,13 +7,17 @@ import ServerErrorPanel from '../components/ServerErrorPanel.vue'
 import { toErrorDetails, type ErrorDetails } from '../lib/apiError'
 import { formatAbsoluteTime, formatLatency, formatRelativeTime } from '../lib/format'
 import {
-  checkResultClass,
-  checkResultLabel,
   displayOrDash,
   incidentStatusClass,
   incidentStatusLabel,
 } from '../lib/incidentDisplay'
-import { statusClass, statusLabel, typeLabel } from '../lib/monitorDisplay'
+import {
+  checkResultClass,
+  checkResultLabel,
+  lastKnownStatusLabel,
+  statusClass,
+  typeLabel,
+} from '../lib/monitorDisplay'
 
 const CHECKS_PAGE_SIZE = 20
 const OPEN_INCIDENT_LIMIT = 5
@@ -124,6 +128,7 @@ watch(() => props.id, loadAll)
         <p class="mono muted">Monitor #{{ id }}</p>
       </div>
       <div v-if="monitor" class="page-actions">
+        <button class="button" type="button" :disabled="loading" @click="loadAll">刷新</button>
         <RouterLink class="button" :to="`/monitors/${id}/edit`">编辑</RouterLink>
         <RouterLink class="button" to="/monitors">返回列表</RouterLink>
       </div>
@@ -133,7 +138,10 @@ watch(() => props.id, loadAll)
 
     <template v-else-if="error">
       <ServerErrorPanel :details="error" />
-      <button class="button" type="button" @click="loadAll">重试</button>
+      <div class="page-actions">
+        <button class="button" type="button" @click="loadAll">重试</button>
+        <RouterLink class="button" to="/monitors">返回列表</RouterLink>
+      </div>
     </template>
 
     <template v-else-if="monitor">
@@ -149,12 +157,10 @@ watch(() => props.id, loadAll)
         <div class="config-item">
           <dt>Monitor Status</dt>
           <dd>
-            <span
-              class="status-badge"
-              :class="statusClass(monitor.currentStatus, monitor.enabled)"
-            >
-              {{ statusLabel(monitor.currentStatus, monitor.enabled) }}
+            <span class="status-badge" :class="statusClass(monitor.currentStatus, true)">
+              {{ lastKnownStatusLabel(monitor.currentStatus) }}
             </span>
+            <span class="mono muted">（{{ monitor.currentStatus }}）</span>
           </dd>
         </div>
         <div class="config-item">

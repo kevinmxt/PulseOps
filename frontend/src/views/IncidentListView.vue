@@ -12,6 +12,8 @@ import ServerErrorPanel from '../components/ServerErrorPanel.vue'
 import { toErrorDetails, type ErrorDetails } from '../lib/apiError'
 import { formatAbsoluteTime } from '../lib/format'
 import {
+  deliveryChannelLabel,
+  deliveryEventLabel,
   deliveryStatusClass,
   deliveryStatusLabel,
   displayOrDash,
@@ -33,6 +35,7 @@ const expandedId = ref<number | null>(null)
 const deliveries = ref<NotificationDelivery[]>([])
 const deliveryLoading = ref(false)
 const deliveryError = ref<ErrorDetails | null>(null)
+let deliveryRequestId = 0
 
 const monitorId = computed<number | null>(() => {
   const raw = route.query.monitor_id
@@ -52,6 +55,8 @@ async function load(targetPage = page.value, initial = false): Promise<void> {
   expandedId.value = null
   deliveries.value = []
   deliveryError.value = null
+  deliveryRequestId += 1
+  deliveryLoading.value = false
   try {
     const result = await listIncidents({
       status: status.value,
@@ -77,36 +82,56 @@ function goToPage(target: number): void {
   void load(target)
 }
 
-async function loadDeliveries(incident: Incident): Promise<void> {
+async function loadDeliveries(incidentId: number): Promise<void> {
+  const requestId = ++deliveryRequestId
   deliveryLoading.value = true
   deliveryError.value = null
   try {
-    const detail = await getIncident(incident.id)
+    const detail = await getIncident(incidentId)
+    if (requestId !== deliveryRequestId) {
+      return
+    }
     deliveries.value = detail.deliveries
   } catch (cause) {
+    if (requestId !== deliveryRequestId) {
+      return
+    }
     deliveryError.value = toErrorDetails(cause)
   } finally {
-    deliveryLoading.value = false
+    if (requestId === deliveryRequestId) {
+      deliveryLoading.value = false
+    }
   }
 }
 
 function toggleIncident(incident: Incident): void {
   if (expandedId.value === incident.id) {
     expandedId.value = null
+    deliveryRequestId += 1
+    deliveryLoading.value = false
     return
   }
   expandedId.value = incident.id
   deliveries.value = []
-  void loadDeliveries(incident)
+  void loadDeliveries(incident.id)
+}
+
+function resetList(): void {
+  incidents.value = []
+  page.value = 0
+  totalElements.value = 0
+  error.value = null
 }
 
 watch(status, () => {
+  resetList()
   void load(0, true)
 })
 
 watch(
   () => route.query.monitor_id,
   () => {
+    resetList()
     void load(0, true)
   },
 )
@@ -139,14 +164,12 @@ onMounted(() => {
       </div>
     </header>
 
-    <div v-if="error" class="error-panel">
-      <div>
-        <strong class="mono">{{ error.code }}</strong>
-        <p>{{ error.message }}</p>
-        <p v-if="error.traceId" class="mono muted">traceId: {{ error.traceId }}</p>
+    <template v-if="error">
+      <ServerErrorPanel :details="error" />
+      <div class="page-actions">
+        <button class="button" type="button" @click="refresh">重试</button>
       </div>
-      <button class="button" type="button" @click="refresh">重试</button>
-    </div>
+    </template>
 
     <p v-if="loading" class="muted">加载中…</p>
     <div v-else-if="incidents.length === 0 && !error" class="empty-state">暂无 Incident</div>
@@ -192,7 +215,7 @@ onMounted(() => {
                 <p v-if="deliveryLoading" class="muted">加载中…</p>
                 <template v-else-if="deliveryError">
                   <ServerErrorPanel :details="deliveryError" />
-                  <button class="button" type="button" @click="loadDeliveries(incident)">
+                  <button class="button" type="button" @click="loadDeliveries(incident.id)">
                     重试
                   </button>
                 </template>
@@ -213,8 +236,10 @@ onMounted(() => {
                   </thead>
                   <tbody>
                     <tr v-for="delivery in deliveries" :key="delivery.id">
-                      <td>{{ delivery.channel }}</td>
-                      <td class="mono">{{ delivery.eventType }}</td>
+                      <td :title="delivery.channel">{{ deliveryChannelLabel(delivery.channel) }}</td>
+                      <td class="mono" :title="delivery.eventType">
+                        {{ deliveryEventLabel(delivery.eventType) }}
+                      </td>
                       <td>
                         <span
                           class="status-badge"

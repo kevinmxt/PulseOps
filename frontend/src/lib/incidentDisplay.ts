@@ -38,12 +38,21 @@ export function deliveryStatusClass(status: NotificationDeliveryStatus): string 
   return DELIVERY_STATUS_CLASSES[status]
 }
 
-export function checkResultLabel(success: boolean): string {
-  return success ? '成功' : '失败'
+const CHANNEL_LABELS: Record<string, string> = {
+  TELEGRAM: 'Telegram',
 }
 
-export function checkResultClass(success: boolean): string {
-  return success ? 'status-up' : 'status-down'
+const EVENT_LABELS: Record<string, string> = {
+  INCIDENT_OPENED: '故障开始',
+  INCIDENT_RESOLVED: '故障恢复',
+}
+
+export function deliveryChannelLabel(channel: string): string {
+  return CHANNEL_LABELS[channel] ?? channel
+}
+
+export function deliveryEventLabel(eventType: string): string {
+  return EVENT_LABELS[eventType] ?? eventType
 }
 
 export function displayOrDash(value: string | number | null | undefined): string {

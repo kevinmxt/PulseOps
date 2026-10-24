@@ -129,6 +129,8 @@ describe('IncidentListView', () => {
     expect(text).toContain('已发送')
     expect(text).toContain('HTTP 500 from Telegram')
     expect(text).toContain('尝试次数')
+    expect(text).toContain('Telegram')
+    expect(text).toContain('故障开始')
 
     await buttonByText(wrapper, '收起').trigger('click')
     expect(wrapper.text()).not.toContain('HTTP 500 from Telegram')
@@ -157,6 +159,27 @@ describe('IncidentListView', () => {
     expect(wrapper.text()).toContain('incidents failed')
     expect(wrapper.text()).toContain('trace-9')
     expect(buttonByText(wrapper, '重试')).toBeDefined()
+  })
+
+  it('clears stale rows when a filter change fails', async () => {
+    listIncidentsMock
+      .mockResolvedValueOnce(page([incident(11)]))
+      .mockRejectedValueOnce(
+        new ApiError('resolved failed', {
+          code: 'INTERNAL_ERROR',
+          status: 500,
+          traceId: 'trace-10',
+        }),
+      )
+
+    const { wrapper } = await mountIncidents()
+    expect(wrapper.text()).toContain('连续 3 次探测失败')
+
+    await wrapper.find('#incident-status').setValue('RESOLVED')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('resolved failed')
+    expect(wrapper.text()).not.toContain('连续 3 次探测失败')
   })
 
   it('paginates incidents', async () => {

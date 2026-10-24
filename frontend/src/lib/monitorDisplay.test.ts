@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { lastKnownStatusLabel, statusClass, statusLabel, typeLabel } from './monitorDisplay'
+import {
+  checkResultClass,
+  checkResultLabel,
+  lastKnownStatusLabel,
+  statusClass,
+  statusLabel,
+  typeLabel,
+} from './monitorDisplay'
 
 describe('monitor display labels', () => {
   it('labels enabled monitor statuses', () => {
@@ -23,5 +30,12 @@ describe('monitor display labels', () => {
   it('labels monitor types', () => {
     expect(typeLabel('HTTP')).toBe('HTTP')
     expect(typeLabel('HEARTBEAT')).toBe('Heartbeat')
+  })
+
+  it('labels check results', () => {
+    expect(checkResultLabel(true)).toBe('成功')
+    expect(checkResultLabel(false)).toBe('失败')
+    expect(checkResultClass(true)).toBe('status-up')
+    expect(checkResultClass(false)).toBe('status-down')
   })
 })

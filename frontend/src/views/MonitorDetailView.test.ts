@@ -200,6 +200,21 @@ describe('MonitorDetailView', () => {
     expect(wrapper.text()).toContain('trace-4')
     expect(listChecksMock).not.toHaveBeenCalled()
     expect(listIncidentsMock).not.toHaveBeenCalled()
+    expect(wrapper.find('a[href="/monitors"]').exists()).toBe(true)
+  })
+
+  it('separates enabled state from Monitor Status for a disabled monitor', async () => {
+    getMonitorMock.mockResolvedValue(monitor({ enabled: false, currentStatus: 'DOWN' }))
+    listChecksMock.mockResolvedValue(page([]))
+    listIncidentsMock.mockResolvedValue(page([]))
+
+    const { wrapper } = await mountDetail()
+
+    const text = wrapper.text()
+    expect(text).toContain('已禁用')
+    expect(text).toContain('故障')
+    expect(text).toContain('DOWN')
+    expect(buttonByText(wrapper, '刷新')).toBeDefined()
   })
 
   it('renders heartbeat config and the token rotation hint', async () => {

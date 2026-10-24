@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  checkResultClass,
-  checkResultLabel,
+  deliveryChannelLabel,
+  deliveryEventLabel,
   deliveryStatusClass,
   deliveryStatusLabel,
   displayOrDash,
@@ -26,11 +26,11 @@ describe('incident display labels', () => {
     expect(deliveryStatusClass('FAILED')).toBe('status-down')
   })
 
-  it('labels check results', () => {
-    expect(checkResultLabel(true)).toBe('成功')
-    expect(checkResultLabel(false)).toBe('失败')
-    expect(checkResultClass(true)).toBe('status-up')
-    expect(checkResultClass(false)).toBe('status-down')
+  it('labels notification channels and events', () => {
+    expect(deliveryChannelLabel('TELEGRAM')).toBe('Telegram')
+    expect(deliveryEventLabel('INCIDENT_OPENED')).toBe('故障开始')
+    expect(deliveryEventLabel('INCIDENT_RESOLVED')).toBe('故障恢复')
+    expect(deliveryEventLabel('UNKNOWN_EVENT')).toBe('UNKNOWN_EVENT')
   })
 
   it('renders a dash for absent values', () => {
