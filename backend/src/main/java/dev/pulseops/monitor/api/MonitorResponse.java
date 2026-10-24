@@ -29,10 +29,6 @@ public record MonitorResponse(
         String heartbeatToken,
         Long lastCheckDurationMs) {
 
-    public static MonitorResponse from(MonitorEntity monitor) {
-        return from(monitor, null, null);
-    }
-
     public static MonitorResponse from(MonitorEntity monitor, String heartbeatToken,
                                        Long lastCheckDurationMs) {
         boolean http = monitor.getType() == MonitorType.HTTP;

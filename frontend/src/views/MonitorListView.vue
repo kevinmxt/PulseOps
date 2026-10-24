@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { listMonitors } from '../api/client'
-import type { Monitor } from '../api/types'
+import type { Monitor, PageResponse } from '../api/types'
+import { useVisiblePolling } from '../composables/useVisiblePolling'
 import { formatAbsoluteTime, formatLatency, formatRelativeTime } from '../lib/format'
 import {
   lastKnownStatusLabel,
@@ -19,26 +20,34 @@ const totalElements = ref(0)
 const loading = ref(true)
 const refreshing = ref(false)
 const error = ref<string | null>(null)
-let pollTimer: number | undefined
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE)))
 const hasPrevious = computed(() => page.value > 0)
 const hasNext = computed(() => page.value + 1 < totalPages.value)
+
+function applyResult(result: PageResponse<Monitor>): void {
+  monitors.value = result.items
+  page.value = result.page
+  totalElements.value = result.totalElements
+  error.value = null
+}
 
 async function load(targetPage = page.value, initial = false): Promise<void> {
   if (refreshing.value) {
     return
   }
   refreshing.value = true
-  if (initial) {
+  if (initial || targetPage !== page.value) {
     loading.value = true
   }
   try {
     const result = await listMonitors(targetPage, PAGE_SIZE)
-    monitors.value = result.items
-    page.value = result.page
-    totalElements.value = result.totalElements
-    error.value = null
+    const lastPage = Math.max(0, Math.ceil(result.totalElements / PAGE_SIZE) - 1)
+    if (result.items.length === 0 && targetPage > lastPage) {
+      applyResult(await listMonitors(lastPage, PAGE_SIZE))
+    } else {
+      applyResult(result)
+    }
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '加载监控项失败'
   } finally {
@@ -58,28 +67,11 @@ function goToPage(target: number): void {
   void load(target)
 }
 
-function onVisibilityChange(): void {
-  if (document.visibilityState === 'visible') {
-    refresh()
-  }
-}
-
 onMounted(() => {
   void load(0, true)
-  pollTimer = window.setInterval(() => {
-    if (document.visibilityState === 'visible') {
-      refresh()
-    }
-  }, POLL_INTERVAL_MS)
-  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
-onUnmounted(() => {
-  if (pollTimer !== undefined) {
-    window.clearInterval(pollTimer)
-  }
-  document.removeEventListener('visibilitychange', onVisibilityChange)
-})
+useVisiblePolling(refresh, POLL_INTERVAL_MS)
 </script>
 
 <template>

@@ -117,7 +117,7 @@ public class MonitorService {
     }
 
     @Transactional(readOnly = true)
-    public Map<Long, Long> latestDurations(Collection<Long> monitorIds) {
+    public Map<Long, Long> latestCheckDurations(Collection<Long> monitorIds) {
         if (monitorIds.isEmpty()) {
             return Map.of();
         }
@@ -127,8 +127,8 @@ public class MonitorService {
     }
 
     @Transactional(readOnly = true)
-    public Long latestDuration(Long monitorId) {
-        return latestDurations(List.of(monitorId)).get(monitorId);
+    public Long latestCheckDuration(Long monitorId) {
+        return latestCheckDurations(List.of(monitorId)).get(monitorId);
     }
 
     @Transactional

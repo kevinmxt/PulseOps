@@ -406,6 +406,12 @@ class MonitorApiIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lastCheckDurationMs")
                         .value(org.hamcrest.Matchers.nullValue()));
+
+        mockMvc.perform(get("/api/v1/monitors").param("page", "0").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(id))
+                .andExpect(jsonPath("$.items[0].lastCheckDurationMs")
+                        .value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

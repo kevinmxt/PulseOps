@@ -162,6 +162,28 @@ describe('MonitorListView', () => {
     wrapper.unmount()
   })
 
+  it('falls back to the last valid page when the current page becomes empty', async () => {
+    listMonitorsMock
+      .mockResolvedValueOnce(
+        page([monitor({ id: 1 }), monitor({ id: 2 })], { page: 0, totalElements: 40 }),
+      )
+      .mockResolvedValueOnce(page([], { page: 1, totalElements: 20 }))
+      .mockResolvedValueOnce(page([monitor({ id: 1 })], { page: 0, totalElements: 20 }))
+
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.text()).toContain('第 1 / 2 页')
+
+    await buttonByText(wrapper, '下一页').trigger('click')
+    await flushPromises()
+
+    expect(listMonitorsMock).toHaveBeenLastCalledWith(0, 20)
+    expect(wrapper.text()).toContain('第 1 / 1 页')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
   it('polls every thirty seconds only while the page is visible', async () => {
     vi.useFakeTimers()
     listMonitorsMock.mockResolvedValue(page([monitor()]))

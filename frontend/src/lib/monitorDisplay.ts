@@ -12,6 +12,11 @@ const STATUS_CLASSES: Record<MonitorStatus, string> = {
   UNKNOWN: 'status-unknown',
 }
 
+const TYPE_LABELS: Record<MonitorType, string> = {
+  HTTP: 'HTTP',
+  HEARTBEAT: 'Heartbeat',
+}
+
 export function lastKnownStatusLabel(status: MonitorStatus): string {
   return STATUS_LABELS[status]
 }
@@ -25,5 +30,5 @@ export function statusClass(status: MonitorStatus, enabled: boolean): string {
 }
 
 export function typeLabel(type: MonitorType): string {
-  return type === 'HEARTBEAT' ? 'Heartbeat' : 'HTTP'
+  return TYPE_LABELS[type]
 }

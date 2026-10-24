@@ -4,7 +4,6 @@ import dev.pulseops.common.PageResponse;
 import dev.pulseops.monitor.MonitorCreationResult;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorService;
-import dev.pulseops.monitor.MonitorType;
 import dev.pulseops.monitor.config.MonitorConfigInput;
 import dev.pulseops.monitor.probe.CheckResultEntity;
 import dev.pulseops.monitor.probe.CheckResultQueryService;
@@ -56,11 +55,8 @@ public class MonitorController {
             @RequestParam(defaultValue = "20") int size) {
         Page<MonitorEntity> result = monitorService.list(page, size);
         List<MonitorEntity> monitors = result.getContent();
-        List<Long> httpMonitorIds = monitors.stream()
-                .filter(monitor -> monitor.getType() == MonitorType.HTTP)
-                .map(MonitorEntity::getId)
-                .toList();
-        Map<Long, Long> durations = monitorService.latestDurations(httpMonitorIds);
+        List<Long> monitorIds = monitors.stream().map(MonitorEntity::getId).toList();
+        Map<Long, Long> durations = monitorService.latestCheckDurations(monitorIds);
         List<MonitorResponse> items = monitors.stream()
                 .map(monitor -> MonitorResponse.from(monitor, null, durations.get(monitor.getId())))
                 .toList();
@@ -70,7 +66,7 @@ public class MonitorController {
     @GetMapping("/{id}")
     public MonitorResponse get(@PathVariable Long id) {
         MonitorEntity monitor = monitorService.get(id);
-        return MonitorResponse.from(monitor, null, lastCheckDuration(monitor));
+        return MonitorResponse.from(monitor, null, monitorService.latestCheckDuration(id));
     }
 
     @GetMapping("/{id}/checks")
@@ -88,13 +84,7 @@ public class MonitorController {
     @PutMapping("/{id}")
     public MonitorResponse update(@PathVariable Long id, @RequestBody MonitorConfigInput request) {
         MonitorEntity monitor = monitorService.update(id, request);
-        return MonitorResponse.from(monitor, null, lastCheckDuration(monitor));
-    }
-
-    private Long lastCheckDuration(MonitorEntity monitor) {
-        return monitor.getType() == MonitorType.HTTP
-                ? monitorService.latestDuration(monitor.getId())
-                : null;
+        return MonitorResponse.from(monitor, null, monitorService.latestCheckDuration(id));
     }
 
     @DeleteMapping("/{id}")
