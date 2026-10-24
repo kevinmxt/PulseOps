@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,8 +73,8 @@ class Phase3RestartIT {
 
     @Test
     void restartDetectsTimeoutsWithoutDuplicatesAndSendsPendingNotifications() {
-        Instant preRestartDeadline = Instant.now().minusSeconds(180);
-        Instant dueAfterRestartDeadline = Instant.now().minusSeconds(60);
+        Instant preRestartDeadline = Instant.now().minusSeconds(180).truncatedTo(ChronoUnit.MICROS);
+        Instant dueAfterRestartDeadline = Instant.now().minusSeconds(60).truncatedTo(ChronoUnit.MICROS);
         Long preRestartMonitorId;
         Long dueAfterRestartMonitorId;
 
