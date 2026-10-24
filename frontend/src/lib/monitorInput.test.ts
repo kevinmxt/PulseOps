@@ -103,6 +103,37 @@ describe('monitor form values', () => {
     })
   })
 
+  it('toggles a heartbeat monitor while preserving heartbeat fields', () => {
+    const heartbeat = monitor({
+      type: 'HEARTBEAT',
+      targetUrl: null,
+      method: null,
+      connectTimeoutMs: null,
+      responseTimeoutMs: null,
+      expectedStatusMin: null,
+      expectedStatusMax: null,
+      failureThreshold: null,
+      recoveryThreshold: null,
+      heartbeatGraceSeconds: 60,
+    })
+
+    expect(monitorToInput(heartbeat, false)).toEqual({
+      name: 'Public API',
+      type: 'HEARTBEAT',
+      targetUrl: null,
+      method: null,
+      intervalSeconds: 60,
+      connectTimeoutMs: null,
+      responseTimeoutMs: null,
+      expectedStatusMin: null,
+      expectedStatusMax: null,
+      enabled: false,
+      failureThreshold: null,
+      recoveryThreshold: null,
+      heartbeatGraceSeconds: 60,
+    })
+  })
+
   it('provides HTTP defaults for a new monitor', () => {
     expect(HTTP_MONITOR_DEFAULTS).toEqual({
       name: '',

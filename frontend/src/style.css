@@ -12,6 +12,7 @@
   --down-soft: #fbe9e7;
   --unknown: #8a5a00;
   --unknown-soft: #fdf3d7;
+  --unknown-border: #ecd59a;
   --disabled: #5f6b7a;
   --disabled-soft: #eef0f3;
   --mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
@@ -223,7 +224,7 @@ a:hover {
 .status-unknown {
   color: var(--unknown);
   background: var(--unknown-soft);
-  border-color: #ecd59a;
+  border-color: var(--unknown-border);
 }
 
 .status-disabled {
@@ -403,6 +404,70 @@ textarea {
 
 .button-link {
   text-decoration: none;
+}
+
+.type-selector {
+  display: flex;
+  gap: 16px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.type-selector legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.type-selector label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.token-panel {
+  max-width: 760px;
+  padding: 20px;
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.token-warning {
+  padding: 8px 10px;
+  margin: 8px 0 16px;
+  color: var(--unknown);
+  background: var(--unknown-soft);
+  border: 1px solid var(--unknown-border);
+  border-radius: 6px;
+}
+
+.token-row {
+  display: flex;
+  gap: 8px;
+}
+
+.token-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.token-section {
+  padding-top: 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
 }
 
 @media (max-width: 640px) {
