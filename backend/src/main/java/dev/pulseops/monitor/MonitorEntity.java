@@ -216,6 +216,11 @@ public class MonitorEntity {
         this.heartbeatGraceSeconds = heartbeatGraceSeconds;
     }
 
+    public Instant heartbeatDeadline() {
+        Instant base = lastHeartbeatAt != null ? lastHeartbeatAt : createdAt;
+        return base.plusSeconds(intervalSeconds + heartbeatGraceSeconds);
+    }
+
     public Instant getNextCheckAt() {
         return nextCheckAt;
     }

@@ -186,7 +186,8 @@ class HeartbeatMonitorApiIT {
         mockMvc.perform(put("/api/v1/monitors/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"nightly updated","intervalSeconds":600,"heartbeatGraceSeconds":120}
+                                {"name":"nightly updated","intervalSeconds":600,"heartbeatGraceSeconds":120,
+                                 "targetUrl":"not a url","failureThreshold":0}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("nightly updated"))
@@ -194,11 +195,30 @@ class HeartbeatMonitorApiIT {
                 .andExpect(jsonPath("$.intervalSeconds").value(600))
                 .andExpect(jsonPath("$.heartbeatGraceSeconds").value(120))
                 .andExpect(jsonPath("$.heartbeatToken").value(nullValue()))
-                .andExpect(jsonPath("$.targetUrl").value(nullValue()));
+                .andExpect(jsonPath("$.targetUrl").value(nullValue()))
+                .andExpect(jsonPath("$.failureThreshold").value(nullValue()));
 
         MonitorEntity updated = monitorRepository.findById(id).orElseThrow();
         assertThat(updated.getNextCheckAt())
                 .isEqualTo(updated.getCreatedAt().plusSeconds(600 + 120));
+    }
+
+    @Test
+    void recomputesDeadlineFromLastHeartbeat() throws Exception {
+        long id = createHeartbeat("nightly", 300, 60);
+        Instant lastHeartbeat = Instant.parse("2026-10-24T00:00:00Z");
+        jdbcTemplate.update("update monitor set last_heartbeat_at = ? where id = ?",
+                Timestamp.from(lastHeartbeat), id);
+
+        mockMvc.perform(put("/api/v1/monitors/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"nightly","intervalSeconds":600,"heartbeatGraceSeconds":120}
+                                """))
+                .andExpect(status().isOk());
+
+        MonitorEntity updated = monitorRepository.findById(id).orElseThrow();
+        assertThat(updated.getNextCheckAt()).isEqualTo(lastHeartbeat.plusSeconds(600 + 120));
     }
 
     @Test

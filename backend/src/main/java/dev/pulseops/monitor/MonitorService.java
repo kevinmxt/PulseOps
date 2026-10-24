@@ -83,7 +83,7 @@ public class MonitorService {
         monitor.setCurrentStatus(MonitorStatus.UNKNOWN);
         monitor.setCreatedAt(now);
         monitor.setUpdatedAt(now);
-        monitor.setNextCheckAt(heartbeatDeadline(monitor));
+        monitor.setNextCheckAt(monitor.heartbeatDeadline());
         monitor = repository.save(monitor);
 
         String token = heartbeatTokenGenerator.generate();
@@ -171,20 +171,10 @@ public class MonitorService {
             incidentService.closeOpenIncidentSilently(monitor.getId(), clock.instant());
         }
         monitor.setUpdatedAt(clock.instant());
-        if (becameEnabled) {
-            monitor.setNextCheckAt(monitor.getUpdatedAt().plusSeconds(
-                    config.intervalSeconds() + config.graceSeconds()));
-        } else if (deadlineConfigChanged) {
-            monitor.setNextCheckAt(heartbeatDeadline(monitor));
+        if (deadlineConfigChanged) {
+            monitor.setNextCheckAt(monitor.heartbeatDeadline());
         }
         return repository.save(monitor);
-    }
-
-    private static Instant heartbeatDeadline(MonitorEntity monitor) {
-        Instant base = monitor.getLastHeartbeatAt() != null
-                ? monitor.getLastHeartbeatAt()
-                : monitor.getCreatedAt();
-        return base.plusSeconds(monitor.getIntervalSeconds() + monitor.getHeartbeatGraceSeconds());
     }
 
     @Transactional

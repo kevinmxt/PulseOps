@@ -30,7 +30,7 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 ### 监控类型
 
-`type` 取 `HTTP`（默认）或 `HEARTBEAT`，创建后不可变。更新时省略 `type` 表示保持原类型；传入不同值返回 400 `VALIDATION_ERROR`。
+`type` 取 `HTTP`（默认）或 `HEARTBEAT`，创建后不可变。更新使用整体替换语义：除省略的 `type` 表示保持原类型外，未提供的可配置字段按默认值处理；传入不同的 `type` 返回 400 `VALIDATION_ERROR`。
 
 心跳监控项的请求支持 `intervalSeconds`（30–2592000，默认 300）与 `heartbeatGraceSeconds`（0–86400，默认 60）。HTTP 专用字段（`targetUrl`、`method`、超时、期望状态码）及 `failureThreshold`/`recoveryThreshold` 对心跳类型被忽略；响应中这些字段为 `null`，并返回 `heartbeatGraceSeconds` 与 `lastHeartbeatAt`。创建时 `currentStatus` 为 `UNKNOWN`。
 

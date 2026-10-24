@@ -23,7 +23,7 @@
 - `last_checked_at`
 - `last_success_at`
 - `next_check_at`：内部调度字段，不对外暴露
-- `config_version`：内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled`、阈值不计入版本。
+- `config_version`：HTTP 类型的内部并发控制字段。`target_url`、`method`、`interval_seconds`、`connect_timeout_ms`、`response_timeout_ms`、`expected_status_min`、`expected_status_max` 变化时递增；`name`、`enabled`、阈值不计入版本。心跳类型不使用此字段。
 - `consecutive_failures`：连续失败 Probe 计数，成功时清零。
 - `consecutive_successes`：连续成功 Probe 计数，失败时清零。
 - `failure_threshold`：进入故障前所需的连续失败次数。

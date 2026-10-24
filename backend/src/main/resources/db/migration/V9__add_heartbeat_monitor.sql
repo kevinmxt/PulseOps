@@ -25,6 +25,7 @@ ALTER TABLE monitor
             AND expected_status_min IS NOT NULL
             AND expected_status_max IS NOT NULL)
         OR (type = 'HEARTBEAT'
+            AND heartbeat_grace_seconds IS NOT NULL
             AND heartbeat_grace_seconds BETWEEN 0 AND 86400)
     );
 
