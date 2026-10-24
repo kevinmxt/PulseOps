@@ -21,6 +21,7 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | ---------------------------- | -------------------- | -------------- |
 | `product/vision.md`          | 定位、目标用户、差异化、非目标      | 需求和产品范围        |
 | `product/roadmap.md`         | 阶段、优先级、当前任务          | 迭代计划与进度更新      |
+| `plans/phase4a-ui.md`        | Phase 4A 设计共识与任务拆分     | 阶段设计回顾、spec 与 ticket 输入 |
 | `architecture/overview.md`   | 技术栈、模块边界、架构约束        | 新模块或架构调整       |
 | `architecture/data-model.md` | 核心实体和数据语义            | 数据库、事务、状态一致性   |
 | `architecture/security.md`   | SSRF、认证、令牌、网络安全      | 所有安全敏感改动       |
@@ -28,6 +29,7 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | `specs/heartbeat.md`         | 定时任务心跳               | Heartbeat 功能   |
 | `specs/incidents.md`         | 故障状态机和通知             | Incident、告警、恢复 |
 | `specs/api.md`               | REST API 约定          | 接口设计或修改        |
+| `specs/ui.md`                | 最小可用 UI 行为规范         | UI 开发、评审与验收    |
 | `quality/acceptance.md`      | 全局测试和完成定义            | 实现完成、提交前       |
 | `quality/phase1-acceptance.md` | Phase 1/1.1 验收证据（CI 与历史记录）与限制 | 阶段验收与回顾        |
 | `quality/phase2-acceptance.md` | Phase 2 验收证据（状态机、Incident、通知、重试）与限制 | 阶段验收与回顾        |

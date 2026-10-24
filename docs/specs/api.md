@@ -38,6 +38,8 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 创建心跳监控项返回 201，响应额外包含仅此一次可见的 `heartbeatToken`；列表、详情和更新响应中该字段恒为 `null`。数据库只保存令牌摘要，删除监控项时级联删除凭证。更新 `intervalSeconds` 或 `heartbeatGraceSeconds` 时重算心跳截止时间。
 
+`GET /api/v1/monitors` 与 `GET /api/v1/monitors/{id}` 返回 `lastCheckDurationMs`：最近一次 Probe 的耗时（毫秒）。HTTP 监控项没有历史结果时为 `null`；心跳监控项恒为 `null`，即使心跳上报写入了 CheckResult。列表接口按当前页批量计算该字段，不得逐项查询。
+
 ### 心跳上报与令牌管理
 
 - `POST /api/v1/heartbeats/{token}`：有效令牌返回 204 且不解析请求体；更新 `lastHeartbeatAt`、`lastCheckedAt`、`lastSuccessAt`，状态置 `UP`，顺延 `nextCheckAt`，并写入一条成功 CheckResult。通过请求防护后，无效、已撤销、不存在或所属监控项已禁用的令牌统一返回 404 `HEARTBEAT_NOT_FOUND`，不区分原因。
@@ -51,7 +53,7 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 `GET /api/v1/monitors/{id}/checks` 返回指定 Monitor 的 CheckResult，按 `started_at` 倒序；没有历史时返回空 `items` 和 `totalElements = 0`；Monitor 不存在时返回 404 和 `MONITOR_NOT_FOUND`。
 
-`GET /api/v1/incidents` 支持 `status`（`OPEN` / `RESOLVED`）与 `monitor_id` 过滤，按 `started_at` 倒序；非法 `status` 返回 400 和 `VALIDATION_ERROR`。`GET /api/v1/incidents/{id}` 返回 `monitorId`、`monitorName`、`startedAt`、`resolvedAt`、`status`、`failureType`、`summary`，并内嵌最近 5 条投递记录（渠道、事件类型、状态、尝试次数、最后尝试时间、发送时间、错误摘要）；不存在时返回 404 和 `INCIDENT_NOT_FOUND`。
+`GET /api/v1/incidents` 支持 `status`（`OPEN` / `RESOLVED`）与 `monitor_id` 过滤，按 `started_at` 倒序；非法 `status` 返回 400 和 `VALIDATION_ERROR`。`GET /api/v1/incidents/{id}` 返回 `monitorId`、`monitorName`、`startedAt`、`resolvedAt`、`status`、`failureType`、`summary`，并内嵌最近 5 条投递记录（渠道、事件类型、状态、尝试次数、最后尝试时间、发送时间、错误摘要）；不存在时返回 404 和 `INCIDENT_NOT_FOUND`。`PENDING` 重试态的投递保留最近一次失败摘要；`SENT` 清空错误摘要；终态 `FAILED` 保留摘要。
 
 ## 安全约束
 - 管理接口必须受认证和授权保护；Phase 4B 前仅允许回环地址访问，具体门槛见 [`../quality/deployment.md`](../quality/deployment.md) 与 [ADR-0003](../adr/0003-defer-admin-auth.md)。
