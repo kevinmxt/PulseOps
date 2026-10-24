@@ -36,40 +36,46 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { init: requestInit, cancelTimeout } = withTimeout(init)
-  let response: Response
   try {
-    response = await fetch(path, requestInit)
-  } catch (cause) {
-    const timedOut = cause instanceof DOMException && cause.name === 'AbortError'
-    throw new ApiError(timedOut ? '请求超时' : '网络请求失败', {
-      code: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
-      status: null,
-      traceId: null,
-      cause,
-    })
+    let response: Response
+    try {
+      response = await fetch(path, requestInit)
+    } catch (cause) {
+      throw networkError(cause)
+    }
+    if (response.status === 204) {
+      return undefined as T
+    }
+    const payload = await readJson(response)
+    if (!response.ok) {
+      const envelope = errorEnvelope(payload)
+      throw new ApiError(envelope?.message ?? `请求失败（HTTP ${response.status}）`, {
+        code: envelope?.code ?? 'UNKNOWN_ERROR',
+        status: response.status,
+        traceId: envelope?.traceId ?? null,
+      })
+    }
+    if (payload === null) {
+      throw new ApiError('响应不是有效的 JSON', {
+        code: 'INVALID_RESPONSE',
+        status: response.status,
+        traceId: null,
+      })
+    }
+    return payload as T
   } finally {
     cancelTimeout()
   }
-  if (response.status === 204) {
-    return undefined as T
-  }
-  const payload = await readJson(response)
-  if (!response.ok) {
-    const envelope = errorEnvelope(payload)
-    throw new ApiError(envelope?.message ?? `请求失败（HTTP ${response.status}）`, {
-      code: envelope?.code ?? 'UNKNOWN_ERROR',
-      status: response.status,
-      traceId: envelope?.traceId ?? null,
-    })
-  }
-  if (payload === null) {
-    throw new ApiError('响应不是有效的 JSON', {
-      code: 'INVALID_RESPONSE',
-      status: response.status,
-      traceId: null,
-    })
-  }
-  return payload as T
+}
+
+function networkError(cause: unknown): ApiError {
+  const timedOut = cause instanceof DOMException && cause.name === 'AbortError'
+  return new ApiError(timedOut ? '请求超时' : '网络请求失败', {
+    code: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
+    status: null,
+    traceId: null,
+    cause,
+  })
 }
 
 function withTimeout(init: RequestInit): { init: RequestInit; cancelTimeout: () => void } {
