@@ -22,6 +22,10 @@ _Avoid_: Check、Request
 一次 Probe 的持久化结果。
 _Avoid_: Check、Result
 
+**Probe Latency（探测延迟）**：
+最近一次 Probe 从发起到结束的耗时。Heartbeat Monitor 不使用 Probe，因此没有探测延迟。
+_Avoid_: Response Time、Duration、耗时
+
 **Monitor Status（监控状态）**：
 Monitor 的当前状态，取值 `UNKNOWN`、`UP`、`DOWN`；由连续成功和连续失败达到阈值后的状态机决定，不由单次 Probe 结果决定。
 _Avoid_: Health、State
