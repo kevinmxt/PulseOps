@@ -15,14 +15,16 @@ interface ApiErrorEnvelope {
   traceId: string | null
 }
 
+const REQUEST_TIMEOUT_MS = 15_000
+
 export class ApiError extends Error {
   readonly code: string
-  readonly status: number
+  readonly status: number | null
   readonly traceId: string | null
 
   constructor(
     message: string,
-    options: { code: string; status: number; traceId?: string | null; cause?: unknown },
+    options: { code: string; status: number | null; traceId?: string | null; cause?: unknown },
   ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause })
     this.name = 'ApiError'
@@ -33,16 +35,20 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const { init: requestInit, cancelTimeout } = withTimeout(init)
   let response: Response
   try {
-    response = await fetch(path, init)
+    response = await fetch(path, requestInit)
   } catch (cause) {
-    throw new ApiError('网络请求失败', {
-      code: 'NETWORK_ERROR',
-      status: 0,
+    const timedOut = cause instanceof DOMException && cause.name === 'AbortError'
+    throw new ApiError(timedOut ? '请求超时' : '网络请求失败', {
+      code: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
+      status: null,
       traceId: null,
       cause,
     })
+  } finally {
+    cancelTimeout()
   }
   if (response.status === 204) {
     return undefined as T
@@ -64,6 +70,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     })
   }
   return payload as T
+}
+
+function withTimeout(init: RequestInit): { init: RequestInit; cancelTimeout: () => void } {
+  if (init.signal) {
+    return { init, cancelTimeout: () => {} }
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  return {
+    init: { ...init, signal: controller.signal },
+    cancelTimeout: () => clearTimeout(timer),
+  }
 }
 
 async function readJson(response: Response): Promise<unknown> {

@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createMonitor,
   deleteMonitor,
+  getIncident,
   getMonitor,
   listChecks,
   listIncidents,
   listMonitors,
+  revokeHeartbeatToken,
   rotateHeartbeatToken,
   updateMonitor,
 } from './client'
@@ -29,7 +31,7 @@ describe('api client', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/monitors?page=0&size=20',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({ method: 'GET', signal: expect.any(AbortSignal) }),
     )
     expect(result.items).toHaveLength(1)
     expect(result.items[0].name).toBe('Public API')
@@ -59,7 +61,20 @@ describe('api client', () => {
     await expect(getMonitor(1)).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
       message: '网络请求失败',
-      status: 0,
+      status: null,
+      traceId: null,
+    })
+  })
+
+  it('maps aborted requests to a timeout error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new DOMException('The operation was aborted.', 'AbortError'),
+    )
+
+    await expect(getMonitor(1)).rejects.toMatchObject({
+      code: 'TIMEOUT',
+      message: '请求超时',
+      status: null,
       traceId: null,
     })
   })
@@ -116,11 +131,14 @@ describe('api client', () => {
 
     const created = await createMonitor(input)
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/monitors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/monitors',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    )
     expect(created.heartbeatToken).toBe('tok-9')
   })
 
@@ -131,11 +149,14 @@ describe('api client', () => {
 
     await updateMonitor(4, { name: 'Renamed' })
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/monitors/4', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Renamed' }),
-    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/monitors/4',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Renamed' }),
+      }),
+    )
   })
 
   it('builds check history pagination parameters', async () => {
@@ -183,6 +204,42 @@ describe('api client', () => {
       '/api/v1/monitors/6/heartbeat-token',
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('revokes a heartbeat token', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(revokeHeartbeatToken(6)).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/monitors/6/heartbeat-token',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+
+  it('loads an incident with its deliveries', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        id: 2,
+        monitorId: 5,
+        monitorName: 'Nightly job',
+        startedAt: '2026-10-24T08:00:00Z',
+        resolvedAt: null,
+        status: 'OPEN',
+        failureType: 'HEARTBEAT_TIMEOUT',
+        summary: 'heartbeat timed out',
+        deliveries: [{ id: 8, status: 'PENDING', attemptCount: 1 }],
+      }),
+    )
+
+    const incident = await getIncident(2)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/incidents/2',
+      expect.objectContaining({ method: 'GET' }),
+    )
+    expect(incident.deliveries[0].status).toBe('PENDING')
   })
 })
 

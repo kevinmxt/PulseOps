@@ -118,10 +118,11 @@ cd backend
 
 ```bash
 cd frontend
+npm test         # Vitest 契约测试
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm run build`；当前阶段证据见 [`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)，历史证据见 [`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)，历史证据见 [`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 
