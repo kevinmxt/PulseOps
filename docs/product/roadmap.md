@@ -54,7 +54,7 @@ Phase 2 已完成（CI 与验收证据见 [`quality/phase2-acceptance.md`](../qu
 ### Phase 3：Heartbeat
 - [x] 心跳监控项
 - [x] 高强度随机令牌及安全存储
-- [ ] 心跳上报接口
+- [x] 心跳上报接口
 - [ ] 超时扫描
 - [ ] 故障与恢复通知
 

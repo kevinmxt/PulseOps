@@ -51,7 +51,7 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 - `http_status_code`
 - `error_summary`
 
-按 `monitor_id` 和时间字段建立适当索引。错误摘要应截断，不能包含凭证。
+按 `monitor_id` 和时间字段建立适当索引。错误摘要应截断，不能包含凭证。心跳有效上报写入 `success = true` 的 CheckResult，`duration_ms = 0`，失败相关字段为空。
 
 ## Incident
 表示一次持续故障事件。
