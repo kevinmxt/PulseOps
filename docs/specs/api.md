@@ -40,10 +40,10 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 
 ### 心跳上报与令牌管理
 
-- `POST /api/v1/heartbeats/{token}`：有效令牌返回 204 且不解析请求体；更新 `lastHeartbeatAt`、`lastCheckedAt`、`lastSuccessAt`，状态置 `UP`，顺延 `nextCheckAt`，并写入一条成功 CheckResult。无效、已撤销、不存在或所属监控项已禁用的令牌统一返回 404 `HEARTBEAT_NOT_FOUND`，不区分原因。
+- `POST /api/v1/heartbeats/{token}`：有效令牌返回 204 且不解析请求体；更新 `lastHeartbeatAt`、`lastCheckedAt`、`lastSuccessAt`，状态置 `UP`，顺延 `nextCheckAt`，并写入一条成功 CheckResult。通过请求防护后，无效、已撤销、不存在或所属监控项已禁用的令牌统一返回 404 `HEARTBEAT_NOT_FOUND`，不区分原因。
 - `POST /api/v1/monitors/{id}/heartbeat-token`：轮换令牌，返回 200 与仅此一次可见的 `heartbeatToken`；旧令牌立即失效；禁用状态仍允许。非心跳类型返回 400 `NOT_HEARTBEAT_MONITOR`；监控项不存在返回 404 `MONITOR_NOT_FOUND`。
 - `DELETE /api/v1/monitors/{id}/heartbeat-token`：撤销令牌，幂等返回 204；禁用状态仍允许；之后上报返回 404。
-- 防护：按令牌 SHA-256 摘要做进程内固定窗口限流，每分钟 120 次（无效令牌同样计数），超出返回 429 `RATE_LIMITED` 并带 `Retry-After`；请求体超过 1KB 返回 413 `PAYLOAD_TOO_LARGE`；`pulseops.heartbeat.require-https` 开启时要求原生 TLS 或 `X-Forwarded-Proto: https`，否则返回 400 `HTTPS_REQUIRED`。
+- 防护规则的参数与信任边界见 [`heartbeat.md`](heartbeat.md#上报接口)；超限分别返回 429 `RATE_LIMITED`（带 `Retry-After`）、413 `PAYLOAD_TOO_LARGE`、400 `HTTPS_REQUIRED`。
 
 ## 分页约定
 

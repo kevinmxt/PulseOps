@@ -59,6 +59,20 @@ class HeartbeatHttpsRequiredIT {
     }
 
     @Test
+    void rejectsForwardedHttpsFromNonLoopbackClients() throws Exception {
+        String token = createHeartbeat();
+
+        mockMvc.perform(post("/api/v1/heartbeats/{token}", token)
+                        .header("X-Forwarded-Proto", "https")
+                        .with(request -> {
+                            request.setRemoteAddr("8.8.8.8");
+                            return request;
+                        }))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("HTTPS_REQUIRED"));
+    }
+
+    @Test
     void acceptsForwardedHttpsAndNativeTls() throws Exception {
         String token = createHeartbeat();
 

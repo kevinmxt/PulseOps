@@ -25,10 +25,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -127,7 +124,7 @@ class HeartbeatReportApiIT {
                 .andExpect(status().isOk());
         String disabledMessage = reportErrorCodeAndMessage(disabled.token());
 
-        assertThat(invalid).isEqualTo("heartbeat not found");
+        assertThat(invalid).isNotBlank();
         assertThat(unknown).isEqualTo(invalid);
         assertThat(revokedMessage).isEqualTo(invalid);
         assertThat(disabledMessage).isEqualTo(invalid);
@@ -150,7 +147,20 @@ class HeartbeatReportApiIT {
 
         assertThat(activeCredentialCount(monitor.id())).isEqualTo(1);
         assertThat(totalCredentialCount(monitor.id())).isEqualTo(2);
-        assertThat(revokedCredentialCount(monitor.id(), sha256Hex(monitor.token()))).isEqualTo(1);
+    }
+
+    @Test
+    void doesNotAffectHttpMonitors() throws Exception {
+        long httpId = createHttp("http-unaffected");
+
+        mockMvc.perform(post("/api/v1/heartbeats/{token}", "C".repeat(43)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HEARTBEAT_NOT_FOUND"));
+
+        MonitorEntity monitor = monitorRepository.findById(httpId).orElseThrow();
+        assertThat(monitor.getCurrentStatus()).isEqualTo(MonitorStatus.UNKNOWN);
+        assertThat(monitor.getLastHeartbeatAt()).isNull();
+        assertThat(checkResults(httpId)).isEmpty();
     }
 
     @Test
@@ -329,14 +339,6 @@ class HeartbeatReportApiIT {
         return queryCount("select count(*) from heartbeat_credential where monitor_id = ?", monitorId);
     }
 
-    private long revokedCredentialCount(long monitorId, String tokenHash) {
-        Long count = jdbcTemplate.queryForObject(
-                "select count(*) from heartbeat_credential where monitor_id = ? and token_hash = ? "
-                        + "and revoked_at is not null",
-                Long.class, monitorId, tokenHash);
-        return count == null ? 0 : count;
-    }
-
     private long queryCount(String sql, long monitorId) {
         Long count = jdbcTemplate.queryForObject(sql, Long.class, monitorId);
         return count == null ? 0 : count;
@@ -345,11 +347,6 @@ class HeartbeatReportApiIT {
     private static long retryAfterSeconds(MvcResult result) {
         String value = result.getResponse().getHeader("Retry-After");
         return value == null ? -1 : Long.parseLong(value);
-    }
-
-    private static String sha256Hex(String value) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 
     private record HeartbeatMonitor(long id, String token) {

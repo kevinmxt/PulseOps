@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class HeartbeatRateLimiter {
 
     static final int MAX_REQUESTS_PER_WINDOW = 120;
+    static final int MAX_TRACKED_KEYS = 100_000;
     static final Duration WINDOW = Duration.ofMinutes(1);
 
     private final Clock clock;
@@ -22,8 +23,15 @@ public class HeartbeatRateLimiter {
         this.clock = clock;
     }
 
-    public void acquire(String key) {
+    public void recordRequest(String key) {
         Instant now = clock.instant();
+        if (!windows.containsKey(key) && windows.size() >= MAX_TRACKED_KEYS) {
+            purgeExpired(now);
+            if (windows.size() >= MAX_TRACKED_KEYS) {
+                throw new HeartbeatRateLimitedException(WINDOW.toSeconds());
+            }
+        }
+
         Window window = windows.compute(key, (ignored, current) ->
                 current == null || !now.isBefore(current.startedAt().plus(WINDOW))
                         ? new Window(now, 1)
@@ -39,6 +47,10 @@ public class HeartbeatRateLimiter {
         if (Duration.between(last, now).compareTo(WINDOW) < 0 || !lastCleanup.compareAndSet(last, now)) {
             return;
         }
+        purgeExpired(now);
+    }
+
+    private void purgeExpired(Instant now) {
         windows.entrySet().removeIf(entry -> !now.isBefore(entry.getValue().startedAt().plus(WINDOW)));
     }
 

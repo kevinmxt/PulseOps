@@ -22,36 +22,48 @@ class HeartbeatRateLimiterTest {
     @Test
     void allowsRequestsUpToTheWindowLimit() {
         for (int i = 0; i < 120; i++) {
-            assertThatCode(() -> limiter.acquire("key")).doesNotThrowAnyException();
+            assertThatCode(() -> limiter.recordRequest("key")).doesNotThrowAnyException();
         }
 
-        assertThatThrownBy(() -> limiter.acquire("key"))
+        assertThatThrownBy(() -> limiter.recordRequest("key"))
                 .isInstanceOfSatisfying(HeartbeatRateLimitedException.class,
-                        e -> assertThat(e.getRetryAfterSeconds()).isBetween(1L, 60L));
+                        e -> assertThat(e.getRetryAfterSeconds()).isEqualTo(60));
+    }
+
+    @Test
+    void retryAfterCountsDownWithTheWindow() {
+        for (int i = 0; i < 120; i++) {
+            limiter.recordRequest("key");
+        }
+        clock.advance(Duration.ofSeconds(45));
+
+        assertThatThrownBy(() -> limiter.recordRequest("key"))
+                .isInstanceOfSatisfying(HeartbeatRateLimitedException.class,
+                        e -> assertThat(e.getRetryAfterSeconds()).isEqualTo(15));
     }
 
     @Test
     void resetsAfterTheWindow() {
         for (int i = 0; i < 120; i++) {
-            limiter.acquire("key");
+            limiter.recordRequest("key");
         }
-        assertThatThrownBy(() -> limiter.acquire("key"))
+        assertThatThrownBy(() -> limiter.recordRequest("key"))
                 .isInstanceOf(HeartbeatRateLimitedException.class);
 
         clock.advance(Duration.ofSeconds(61));
 
-        assertThatCode(() -> limiter.acquire("key")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.recordRequest("key")).doesNotThrowAnyException();
     }
 
     @Test
     void isolatesKeys() {
         for (int i = 0; i < 120; i++) {
-            limiter.acquire("first");
+            limiter.recordRequest("first");
         }
-        assertThatThrownBy(() -> limiter.acquire("first"))
+        assertThatThrownBy(() -> limiter.recordRequest("first"))
                 .isInstanceOf(HeartbeatRateLimitedException.class);
 
-        assertThatCode(() -> limiter.acquire("second")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.recordRequest("second")).doesNotThrowAnyException();
     }
 
     private static final class MutableClock extends Clock {

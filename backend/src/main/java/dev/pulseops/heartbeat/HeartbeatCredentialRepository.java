@@ -10,7 +10,13 @@ import java.util.Optional;
 
 public interface HeartbeatCredentialRepository extends JpaRepository<HeartbeatCredentialEntity, Long> {
 
-    Optional<HeartbeatCredentialEntity> findByTokenHash(String tokenHash);
+    @Query("""
+            select c.monitorId
+            from HeartbeatCredentialEntity c
+            where c.tokenHash = :tokenHash
+              and c.revokedAt is null
+            """)
+    Optional<Long> findActiveMonitorIdByTokenHash(@Param("tokenHash") String tokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from HeartbeatCredentialEntity c where c.tokenHash = :tokenHash")

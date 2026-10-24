@@ -20,40 +20,33 @@ public class HeartbeatService {
     private final MonitorRepository monitorRepository;
     private final CheckResultRepository checkResultRepository;
     private final HeartbeatTokenGenerator tokenGenerator;
-    private final HeartbeatRateLimiter rateLimiter;
     private final Clock clock;
 
     public HeartbeatService(HeartbeatCredentialRepository credentialRepository,
                             MonitorRepository monitorRepository,
                             CheckResultRepository checkResultRepository,
                             HeartbeatTokenGenerator tokenGenerator,
-                            HeartbeatRateLimiter rateLimiter,
                             Clock clock) {
         this.credentialRepository = credentialRepository;
         this.monitorRepository = monitorRepository;
         this.checkResultRepository = checkResultRepository;
         this.tokenGenerator = tokenGenerator;
-        this.rateLimiter = rateLimiter;
         this.clock = clock;
     }
 
     @Transactional
     public void report(String token) {
         String tokenHash = tokenGenerator.digest(token);
-        rateLimiter.acquire(tokenHash);
 
-        HeartbeatCredentialEntity credential = credentialRepository.findByTokenHash(tokenHash)
-                .filter(candidate -> candidate.getRevokedAt() == null)
+        Long monitorId = credentialRepository.findActiveMonitorIdByTokenHash(tokenHash)
                 .orElseThrow(HeartbeatNotFoundException::new);
-        MonitorEntity monitor = monitorRepository.findByIdForUpdate(credential.getMonitorId())
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
                 .orElseThrow(HeartbeatNotFoundException::new);
-        HeartbeatCredentialEntity lockedCredential = credentialRepository.findByTokenHashForUpdate(tokenHash)
-                .filter(candidate -> candidate.getRevokedAt() == null)
+        credentialRepository.findByTokenHashForUpdate(tokenHash)
+                .filter(credential -> credential.getRevokedAt() == null)
                 .orElseThrow(HeartbeatNotFoundException::new);
 
-        if (monitor.getType() != MonitorType.HEARTBEAT
-                || !monitor.isEnabled()
-                || !lockedCredential.getMonitorId().equals(monitor.getId())) {
+        if (monitor.getType() != MonitorType.HEARTBEAT || !monitor.isEnabled()) {
             throw new HeartbeatNotFoundException();
         }
 
@@ -78,9 +71,7 @@ public class HeartbeatService {
 
     @Transactional
     public String rotateToken(Long monitorId) {
-        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
-                .orElseThrow(() -> new MonitorNotFoundException(monitorId));
-        requireHeartbeat(monitor);
+        lockHeartbeatMonitor(monitorId);
 
         Instant now = clock.instant();
         credentialRepository.findActiveByMonitorIdForUpdate(monitorId)
@@ -98,17 +89,18 @@ public class HeartbeatService {
 
     @Transactional
     public void revokeToken(Long monitorId) {
-        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
-                .orElseThrow(() -> new MonitorNotFoundException(monitorId));
-        requireHeartbeat(monitor);
+        lockHeartbeatMonitor(monitorId);
 
         credentialRepository.findActiveByMonitorIdForUpdate(monitorId)
                 .ifPresent(credential -> credential.setRevokedAt(clock.instant()));
     }
 
-    private static void requireHeartbeat(MonitorEntity monitor) {
+    private MonitorEntity lockHeartbeatMonitor(Long monitorId) {
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
+                .orElseThrow(() -> new MonitorNotFoundException(monitorId));
         if (monitor.getType() != MonitorType.HEARTBEAT) {
             throw new NotHeartbeatMonitorException();
         }
+        return monitor;
     }
 }

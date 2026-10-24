@@ -20,9 +20,9 @@
 - 无效、已撤销、不存在或所属监控项已禁用的令牌统一返回 `404 HEARTBEAT_NOT_FOUND`，不区分原因。
 - 不要求后台任务使用管理员登录凭证。
 - 不得将完整令牌写入日志。
-- 按令牌 SHA-256 摘要限流 120 次/分钟（无效令牌同样计数），超出返回 `429` 并带 `Retry-After`。
+- 按令牌 SHA-256 摘要限流 120 次/分钟（无效令牌同样计数），超出返回 `429` 并带 `Retry-After`；内存中的跟踪键数量设上限，防止无效令牌无限增长。
 - 请求体上限 1KB，超出返回 `413`。
-- `pulseops.heartbeat.require-https` 开启时，仅接受原生 TLS 或 `X-Forwarded-Proto: https`，否则返回 `400`。
+- `pulseops.heartbeat.require-https` 开启时，仅接受原生 TLS，或来自回环地址并携带 `X-Forwarded-Proto: https` 的请求（转发头由本地代理提供），否则返回 `400`。
 
 ## 令牌轮换与撤销
 
