@@ -2,6 +2,10 @@
 import { reactive, ref } from 'vue'
 import type { ErrorDetails } from '../lib/apiError'
 import {
+  HEARTBEAT_GRACE_MAX_SECONDS,
+  HEARTBEAT_GRACE_MIN_SECONDS,
+  HEARTBEAT_INTERVAL_MAX_SECONDS,
+  HEARTBEAT_INTERVAL_MIN_SECONDS,
   validateHeartbeatForm,
   type HeartbeatFormErrors,
   type HeartbeatFormValues,
@@ -55,8 +59,8 @@ function submit(): void {
           id="heartbeat-interval"
           v-model.number="values.intervalSeconds"
           type="number"
-          min="30"
-          max="2592000"
+          :min="HEARTBEAT_INTERVAL_MIN_SECONDS"
+          :max="HEARTBEAT_INTERVAL_MAX_SECONDS"
         />
         <p v-if="errors.intervalSeconds" class="field-error">{{ errors.intervalSeconds }}</p>
       </div>
@@ -67,8 +71,8 @@ function submit(): void {
           id="heartbeat-grace"
           v-model.number="values.heartbeatGraceSeconds"
           type="number"
-          min="0"
-          max="86400"
+          :min="HEARTBEAT_GRACE_MIN_SECONDS"
+          :max="HEARTBEAT_GRACE_MAX_SECONDS"
         />
         <p v-if="errors.heartbeatGraceSeconds" class="field-error">
           {{ errors.heartbeatGraceSeconds }}

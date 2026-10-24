@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue'
 import { buildHeartbeatCommand } from '../lib/heartbeatCommand'
 
-const props = defineProps<{ token: string }>()
+const props = withDefaults(defineProps<{ token: string; showTitle?: boolean }>(), {
+  showTitle: true,
+})
 const emit = defineEmits<{ done: [] }>()
 
 const command = computed(() => buildHeartbeatCommand(window.location.origin, props.token))
@@ -26,7 +28,7 @@ async function copy(value: string, kind: 'token' | 'command'): Promise<void> {
 
 <template>
   <section class="token-panel">
-    <h2>心跳令牌</h2>
+    <h2 v-if="showTitle">心跳令牌</h2>
     <p class="token-warning">令牌只显示一次，请立即保存。遗失后必须轮换令牌。</p>
 
     <div class="form-field">

@@ -193,6 +193,21 @@ describe('MonitorEditView', () => {
     expect(wrapper.text()).toContain('令牌已撤销')
   })
 
+  it('refills the heartbeat form with server values after saving', async () => {
+    getMonitorMock.mockResolvedValue(heartbeatMonitor())
+    updateMonitorMock.mockResolvedValue(
+      heartbeatMonitor({ name: 'Trimmed', intervalSeconds: 600 }),
+    )
+    const { wrapper } = await mountEdit('8')
+
+    await wrapper.find('#heartbeat-name').setValue('  Trimmed  ')
+    await wrapper.find('#heartbeat-interval').setValue(600)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect((wrapper.find('#heartbeat-name').element as HTMLInputElement).value).toBe('Trimmed')
+  })
+
   it('keeps token actions available for a disabled heartbeat monitor', async () => {
     getMonitorMock.mockResolvedValue(heartbeatMonitor({ enabled: false }))
     const { wrapper } = await mountEdit('8')

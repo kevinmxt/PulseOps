@@ -113,6 +113,25 @@ describe('MonitorCreateView', () => {
     expect(command).toContain('/api/v1/heartbeats/tok-9')
     expect(wrapper.text()).toContain('只显示一次')
     expect(wrapper.find('a[href="/monitors/9"]').exists()).toBe(true)
+    expect(wrapper.findAll('button').map((button) => button.text())).not.toContain('再创建一个')
+  })
+
+  it('keeps the created heartbeat monitor when no token is returned', async () => {
+    createMonitorMock.mockResolvedValue({
+      id: 9,
+      type: 'HEARTBEAT',
+      heartbeatToken: null,
+    } as Monitor)
+    const { wrapper } = await mountCreate()
+
+    await wrapper.find('input[value="HEARTBEAT"]').setValue(true)
+    await wrapper.find('#heartbeat-name').setValue('Nightly job')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('未返回令牌')
+    expect(wrapper.find('a[href="/monitors/9/edit"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/monitors/9"]').exists()).toBe(true)
   })
 
   it('hides the token after the user confirms it is saved', async () => {
@@ -128,6 +147,7 @@ describe('MonitorCreateView', () => {
 
     expect(wrapper.find('#heartbeat-token').exists()).toBe(false)
     expect(wrapper.text()).toContain('令牌已保存')
+    expect(wrapper.findAll('button').map((button) => button.text())).toContain('再创建一个')
   })
 
   it('copies the token and the command', async () => {

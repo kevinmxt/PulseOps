@@ -10,6 +10,11 @@ export interface HeartbeatFormValues {
 
 export type HeartbeatFormErrors = Partial<Record<keyof HeartbeatFormValues, string>>
 
+export const HEARTBEAT_INTERVAL_MIN_SECONDS = 30
+export const HEARTBEAT_INTERVAL_MAX_SECONDS = 2592000
+export const HEARTBEAT_GRACE_MIN_SECONDS = 0
+export const HEARTBEAT_GRACE_MAX_SECONDS = 86400
+
 export const HEARTBEAT_MONITOR_DEFAULTS: HeartbeatFormValues = {
   name: '',
   intervalSeconds: 300,
@@ -46,8 +51,8 @@ export function validateHeartbeatForm(values: HeartbeatFormValues): HeartbeatFor
     errors,
     'intervalSeconds',
     values.intervalSeconds,
-    30,
-    2592000,
+    HEARTBEAT_INTERVAL_MIN_SECONDS,
+    HEARTBEAT_INTERVAL_MAX_SECONDS,
     '预期间隔',
     '秒',
   )
@@ -55,8 +60,8 @@ export function validateHeartbeatForm(values: HeartbeatFormValues): HeartbeatFor
     errors,
     'heartbeatGraceSeconds',
     values.heartbeatGraceSeconds,
-    0,
-    86400,
+    HEARTBEAT_GRACE_MIN_SECONDS,
+    HEARTBEAT_GRACE_MAX_SECONDS,
     '宽限时间',
     '秒',
   )

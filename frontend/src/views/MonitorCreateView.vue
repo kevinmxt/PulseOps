@@ -6,6 +6,7 @@ import type { MonitorInput, MonitorType } from '../api/types'
 import HeartbeatForm from '../components/HeartbeatForm.vue'
 import HeartbeatTokenPanel from '../components/HeartbeatTokenPanel.vue'
 import MonitorForm from '../components/MonitorForm.vue'
+import ServerErrorPanel from '../components/ServerErrorPanel.vue'
 import { toErrorDetails, type ErrorDetails } from '../lib/apiError'
 import {
   HEARTBEAT_MONITOR_DEFAULTS,
@@ -24,19 +25,25 @@ const submitting = ref(false)
 const serverError = ref<ErrorDetails | null>(null)
 const createdHeartbeatId = ref<number | null>(null)
 const heartbeatToken = ref<string | null>(null)
+const tokenMissing = ref(false)
 
 watch(type, () => {
   serverError.value = null
 })
 
-async function create(input: MonitorInput, createdType: MonitorType): Promise<void> {
+async function create(input: MonitorInput): Promise<void> {
   submitting.value = true
   serverError.value = null
   try {
     const created = await createMonitor(input)
-    if (createdType === 'HEARTBEAT' && created.heartbeatToken) {
+    if (created.type === 'HEARTBEAT') {
       createdHeartbeatId.value = created.id
-      heartbeatToken.value = created.heartbeatToken
+      if (created.heartbeatToken) {
+        heartbeatToken.value = created.heartbeatToken
+        tokenMissing.value = false
+      } else {
+        tokenMissing.value = true
+      }
       return
     }
     await router.push(`/monitors/${created.id}`)
@@ -48,16 +55,17 @@ async function create(input: MonitorInput, createdType: MonitorType): Promise<vo
 }
 
 function submitHttp(values: HttpMonitorFormValues): void {
-  void create(formValuesToMonitorInput(values, 'HTTP'), 'HTTP')
+  void create(formValuesToMonitorInput(values, 'HTTP'))
 }
 
 function submitHeartbeat(values: HeartbeatFormValues): void {
-  void create(heartbeatFormToMonitorInput(values), 'HEARTBEAT')
+  void create(heartbeatFormToMonitorInput(values))
 }
 
 function resetCreate(): void {
   createdHeartbeatId.value = null
   heartbeatToken.value = null
+  tokenMissing.value = false
   type.value = 'HTTP'
   serverError.value = null
 }
@@ -78,13 +86,35 @@ function resetCreate(): void {
         :token="heartbeatToken"
         @done="heartbeatToken = null"
       />
+      <ServerErrorPanel
+        v-else-if="tokenMissing"
+        :details="{
+          code: 'MISSING_HEARTBEAT_TOKEN',
+          message: '创建成功但未返回令牌。请前往编辑页轮换令牌后获取。',
+          traceId: null,
+        }"
+      />
       <div v-else class="empty-state">令牌已保存。若遗失，请在编辑页轮换。</div>
 
       <div class="page-actions">
         <RouterLink class="button button-primary" :to="`/monitors/${createdHeartbeatId}`">
           前往详情
         </RouterLink>
-        <button class="button" type="button" @click="resetCreate">再创建一个</button>
+        <RouterLink
+          v-if="tokenMissing"
+          class="button"
+          :to="`/monitors/${createdHeartbeatId}/edit`"
+        >
+          前往编辑页
+        </RouterLink>
+        <button
+          v-if="heartbeatToken === null && !tokenMissing"
+          class="button"
+          type="button"
+          @click="resetCreate"
+        >
+          再创建一个
+        </button>
       </div>
     </template>
 

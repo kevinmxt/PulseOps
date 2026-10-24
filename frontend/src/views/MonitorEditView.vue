@@ -37,6 +37,7 @@ const heartbeatToken = ref<string | null>(null)
 const tokenBusy = ref(false)
 const tokenError = ref<ErrorDetails | null>(null)
 const tokenMessage = ref<string | null>(null)
+const formVersion = ref(0)
 
 function monitorId(): number | null {
   const id = Number(props.id)
@@ -103,6 +104,7 @@ async function submitHeartbeat(values: HeartbeatFormValues): Promise<void> {
   savedMessage.value = null
   try {
     monitor.value = await updateMonitor(id, heartbeatFormToMonitorInput(values))
+    formVersion.value += 1
     savedMessage.value = '已保存'
   } catch (cause) {
     serverError.value = toErrorDetails(cause)
@@ -167,6 +169,7 @@ async function revokeToken(): Promise<void> {
 
     <template v-else-if="monitor && monitor.type === 'HEARTBEAT'">
       <HeartbeatForm
+        :key="formVersion"
         :initial="monitorToHeartbeatFormValues(monitor)"
         submit-label="保存修改"
         :submitting="submitting"
@@ -196,6 +199,7 @@ async function revokeToken(): Promise<void> {
         <HeartbeatTokenPanel
           v-if="heartbeatToken"
           :token="heartbeatToken"
+          :show-title="false"
           @done="heartbeatToken = null"
         />
       </section>

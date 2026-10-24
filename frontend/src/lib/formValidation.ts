@@ -23,7 +23,7 @@ export function requireIntegerRange<K extends string>(
     return
   }
   if (!Number.isInteger(value) || value < min || value > max) {
-    const suffix = unit ? ` ${unit}` : ''
-    errors[field] = `${label}必须在 ${min}–${max}${suffix} 之间`
+    const bounds = unit ? `${min}–${max} ${unit}` : `${min}–${max} `
+    errors[field] = `${label}必须在 ${bounds}之间`
   }
 }
