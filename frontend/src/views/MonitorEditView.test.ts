@@ -96,6 +96,21 @@ describe('MonitorEditView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/monitors/4')
   })
 
+  it('reloads when the route id changes', async () => {
+    getMonitorMock
+      .mockResolvedValueOnce(monitor({ id: 4, name: 'First' }))
+      .mockResolvedValueOnce(monitor({ id: 5, name: 'Second' }))
+    const { wrapper } = await mountEdit('4')
+
+    expect((wrapper.find('#monitor-name').element as HTMLInputElement).value).toBe('First')
+
+    await wrapper.setProps({ id: '5' })
+    await flushPromises()
+
+    expect(getMonitorMock).toHaveBeenLastCalledWith(5)
+    expect((wrapper.find('#monitor-name').element as HTMLInputElement).value).toBe('Second')
+  })
+
   it('shows a notice instead of the form for heartbeat monitors', async () => {
     getMonitorMock.mockResolvedValue(
       monitor({

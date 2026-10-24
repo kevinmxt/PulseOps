@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMonitor, updateMonitor } from '../api/client'
 import type { Monitor } from '../api/types'
@@ -26,7 +26,12 @@ function monitorId(): number | null {
   return Number.isInteger(id) && id > 0 ? id : null
 }
 
-onMounted(async () => {
+async function loadMonitor(): Promise<void> {
+  loading.value = true
+  monitor.value = null
+  loadError.value = null
+  serverError.value = null
+
   const id = monitorId()
   if (id === null) {
     loadError.value = {
@@ -44,17 +49,21 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadMonitor)
+watch(() => props.id, loadMonitor)
 
 async function submit(values: HttpMonitorFormValues): Promise<void> {
   const id = monitorId()
-  if (id === null) {
+  const current = monitor.value
+  if (id === null || current === null) {
     return
   }
   submitting.value = true
   serverError.value = null
   try {
-    const updated = await updateMonitor(id, formValuesToMonitorInput(values))
+    const updated = await updateMonitor(id, formValuesToMonitorInput(values, current.type))
     await router.push(`/monitors/${updated.id}`)
   } catch (cause) {
     serverError.value = toErrorDetails(cause)

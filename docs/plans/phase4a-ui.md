@@ -82,7 +82,7 @@
 - `src/api/`：带类型的 `fetch` 封装，统一解析 `{code, message, traceId}` 错误。
 - `src/views/`：监控列表、创建、编辑、详情、Incident 页。
 - `src/components/`：状态徽章、类型徽章、分页器、确认对话框、表单字段组、令牌展示。
-- `src/composables/`：轮询、时间格式化、监控表单负载构造。
+- `src/composables/`：轮询；`src/lib/`：时间/延迟格式化、表单值、请求负载与校验。
 - 样式基线：颜色变量、状态色、等宽字体类、紧凑表格。
 - 路由：5 个路由，导航栏含「监控项」「Incidents」。
 - CI：增加 `npm test`。

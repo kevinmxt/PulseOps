@@ -4,6 +4,7 @@ import { deleteMonitor, listMonitors, updateMonitor } from '../api/client'
 import type { Monitor, PageResponse } from '../api/types'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { useVisiblePolling } from '../composables/useVisiblePolling'
+import { toErrorDetails, type ErrorDetails } from '../lib/apiError'
 import { formatAbsoluteTime, formatLatency, formatRelativeTime } from '../lib/format'
 import {
   lastKnownStatusLabel,
@@ -21,9 +22,10 @@ const page = ref(0)
 const totalElements = ref(0)
 const loading = ref(true)
 const refreshing = ref(false)
-const error = ref<string | null>(null)
+const error = ref<ErrorDetails | null>(null)
 const actionBusyId = ref<number | null>(null)
 const pendingDelete = ref<Monitor | null>(null)
+let pendingReload = false
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE)))
 const hasPrevious = computed(() => page.value > 0)
@@ -38,6 +40,7 @@ function applyResult(result: PageResponse<Monitor>): void {
 
 async function load(targetPage = page.value, initial = false): Promise<void> {
   if (refreshing.value) {
+    pendingReload = true
     return
   }
   refreshing.value = true
@@ -53,10 +56,14 @@ async function load(targetPage = page.value, initial = false): Promise<void> {
       applyResult(result)
     }
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '加载监控项失败'
+    error.value = toErrorDetails(cause)
   } finally {
     loading.value = false
     refreshing.value = false
+    if (pendingReload) {
+      pendingReload = false
+      void load(page.value)
+    }
   }
 }
 
@@ -77,7 +84,7 @@ async function toggleMonitor(monitor: Monitor): Promise<void> {
     await updateMonitor(monitor.id, monitorToInput(monitor, !monitor.enabled))
     await load(page.value)
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '更新监控项失败'
+    error.value = toErrorDetails(cause)
   } finally {
     actionBusyId.value = null
   }
@@ -89,7 +96,7 @@ function requestDelete(monitor: Monitor): void {
 
 async function confirmDelete(): Promise<void> {
   const monitor = pendingDelete.value
-  if (!monitor) {
+  if (!monitor || actionBusyId.value !== null) {
     return
   }
   actionBusyId.value = monitor.id
@@ -98,7 +105,7 @@ async function confirmDelete(): Promise<void> {
     pendingDelete.value = null
     await load(page.value)
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '删除监控项失败'
+    error.value = toErrorDetails(cause)
   } finally {
     actionBusyId.value = null
   }
@@ -127,7 +134,11 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
     </header>
 
     <div v-if="error" class="error-panel">
-      <span>{{ error }}</span>
+      <div>
+        <strong class="mono">{{ error.code }}</strong>
+        <p>{{ error.message }}</p>
+        <p v-if="error.traceId" class="mono muted">traceId: {{ error.traceId }}</p>
+      </div>
       <button class="button" type="button" @click="refresh">重试</button>
     </div>
 
@@ -222,6 +233,7 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
       title="删除监控项"
       :message="`确定删除「${pendingDelete?.name ?? ''}」吗？历史结果与心跳凭证会一并删除。`"
       confirm-label="确认删除"
+      :busy="pendingDelete !== null && actionBusyId === pendingDelete.id"
       @confirm="confirmDelete"
       @cancel="pendingDelete = null"
     />

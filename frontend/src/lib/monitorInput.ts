@@ -1,4 +1,4 @@
-import type { HttpMethod, Monitor, MonitorInput } from '../api/types'
+import type { HttpMethod, Monitor, MonitorInput, MonitorType } from '../api/types'
 
 export interface HttpMonitorFormValues {
   name: string
@@ -46,10 +46,13 @@ export function monitorToFormValues(monitor: Monitor): HttpMonitorFormValues {
   }
 }
 
-export function formValuesToMonitorInput(values: HttpMonitorFormValues): MonitorInput {
+export function formValuesToMonitorInput(
+  values: HttpMonitorFormValues,
+  type: MonitorType = 'HTTP',
+): MonitorInput {
   return {
     name: values.name.trim(),
-    type: 'HTTP',
+    type,
     targetUrl: values.targetUrl.trim(),
     method: values.method,
     intervalSeconds: values.intervalSeconds,

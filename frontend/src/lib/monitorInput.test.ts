@@ -74,6 +74,10 @@ describe('monitor form values', () => {
     })
   })
 
+  it('preserves the requested monitor type', () => {
+    expect(formValuesToMonitorInput(validValues, 'HEARTBEAT').type).toBe('HEARTBEAT')
+  })
+
   it('prefills form values from an HTTP monitor', () => {
     expect(monitorToFormValues(monitor())).toEqual({
       ...validValues,

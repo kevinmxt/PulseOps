@@ -269,7 +269,46 @@ describe('MonitorListView', () => {
     wrapper.unmount()
   })
 
-  it('shows an error when toggling fails', async () => {
+  it('cancels the delete dialog with Escape', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor()]))
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(deleteMonitorMock).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('keeps the dialog and shows error details when delete fails', async () => {
+    listMonitorsMock.mockResolvedValue(page([monitor({ id: 7, name: 'Keep me' })]))
+    deleteMonitorMock.mockRejectedValue(
+      new ApiError('删除失败', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-7',
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+    await buttonByText(wrapper, '删除').trigger('click')
+    await buttonByText(wrapper, '确认删除').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('INTERNAL_ERROR')
+    expect(wrapper.text()).toContain('删除失败')
+    expect(wrapper.text()).toContain('trace-7')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('shows error details when toggling fails', async () => {
     listMonitorsMock.mockResolvedValue(page([monitor()]))
     updateMonitorMock.mockRejectedValue(
       new ApiError('更新失败', {
@@ -284,7 +323,9 @@ describe('MonitorListView', () => {
     await buttonByText(wrapper, '禁用').trigger('click')
     await flushPromises()
 
+    expect(wrapper.text()).toContain('VALIDATION_ERROR')
     expect(wrapper.text()).toContain('更新失败')
+    expect(wrapper.text()).toContain('trace-6')
 
     wrapper.unmount()
   })
