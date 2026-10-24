@@ -118,6 +118,12 @@ a:hover {
   margin-bottom: 16px;
 }
 
+.page-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -273,6 +279,132 @@ textarea {
   opacity: 0.6;
 }
 
+.form-panel {
+  max-width: 760px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field.full {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.form-field input[type='text'],
+.form-field input[type='number'],
+.form-field select {
+  padding: 6px 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+}
+
+.form-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-error {
+  color: var(--down);
+  font-size: 0.75rem;
+}
+
+.server-error {
+  margin-bottom: 16px;
+}
+
+.advanced {
+  margin-top: 20px;
+}
+
+.advanced summary {
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.advanced-grid {
+  margin-top: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.dialog {
+  width: min(420px, 100%);
+  padding: 20px;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.button-danger {
+  color: #ffffff;
+  background: var(--down);
+  border-color: var(--down);
+}
+
+.button-danger-outline {
+  color: var(--down);
+  border-color: #f2c1ba;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button-link {
+  text-decoration: none;
+}
+
 @media (max-width: 640px) {
   .app-header {
     flex-direction: column;
@@ -287,5 +419,9 @@ textarea {
   .data-table {
     display: block;
     overflow-x: auto;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 }

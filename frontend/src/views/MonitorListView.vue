@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { listMonitors } from '../api/client'
+import { deleteMonitor, listMonitors, updateMonitor } from '../api/client'
 import type { Monitor, PageResponse } from '../api/types'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { useVisiblePolling } from '../composables/useVisiblePolling'
 import { formatAbsoluteTime, formatLatency, formatRelativeTime } from '../lib/format'
 import {
@@ -10,6 +11,7 @@ import {
   statusLabel,
   typeLabel,
 } from '../lib/monitorDisplay'
+import { monitorToInput } from '../lib/monitorInput'
 
 const PAGE_SIZE = 20
 const POLL_INTERVAL_MS = 30_000
@@ -20,6 +22,8 @@ const totalElements = ref(0)
 const loading = ref(true)
 const refreshing = ref(false)
 const error = ref<string | null>(null)
+const actionBusyId = ref<number | null>(null)
+const pendingDelete = ref<Monitor | null>(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE)))
 const hasPrevious = computed(() => page.value > 0)
@@ -67,6 +71,39 @@ function goToPage(target: number): void {
   void load(target)
 }
 
+async function toggleMonitor(monitor: Monitor): Promise<void> {
+  actionBusyId.value = monitor.id
+  try {
+    await updateMonitor(monitor.id, monitorToInput(monitor, !monitor.enabled))
+    await load(page.value)
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '更新监控项失败'
+  } finally {
+    actionBusyId.value = null
+  }
+}
+
+function requestDelete(monitor: Monitor): void {
+  pendingDelete.value = monitor
+}
+
+async function confirmDelete(): Promise<void> {
+  const monitor = pendingDelete.value
+  if (!monitor) {
+    return
+  }
+  actionBusyId.value = monitor.id
+  try {
+    await deleteMonitor(monitor.id)
+    pendingDelete.value = null
+    await load(page.value)
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '删除监控项失败'
+  } finally {
+    actionBusyId.value = null
+  }
+}
+
 onMounted(() => {
   void load(0, true)
 })
@@ -81,9 +118,12 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
         <h1>监控项</h1>
         <p class="muted">共 {{ totalElements }} 个监控项</p>
       </div>
-      <button class="button" type="button" :disabled="refreshing" @click="refresh">
-        {{ refreshing ? '刷新中…' : '刷新' }}
-      </button>
+      <div class="page-actions">
+        <RouterLink class="button button-primary" to="/monitors/new">新建监控项</RouterLink>
+        <button class="button" type="button" :disabled="refreshing" @click="refresh">
+          {{ refreshing ? '刷新中…' : '刷新' }}
+        </button>
+      </div>
     </header>
 
     <div v-if="error" class="error-panel">
@@ -103,6 +143,7 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
             <th>状态</th>
             <th>最近检查</th>
             <th>延迟</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -130,6 +171,27 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
               </span>
             </td>
             <td class="mono">{{ formatLatency(monitor.lastCheckDurationMs) }}</td>
+            <td class="row-actions">
+              <RouterLink class="button button-link" :to="`/monitors/${monitor.id}/edit`">
+                编辑
+              </RouterLink>
+              <button
+                class="button"
+                type="button"
+                :disabled="actionBusyId === monitor.id"
+                @click="toggleMonitor(monitor)"
+              >
+                {{ monitor.enabled ? '禁用' : '启用' }}
+              </button>
+              <button
+                class="button button-danger-outline"
+                type="button"
+                :disabled="actionBusyId === monitor.id"
+                @click="requestDelete(monitor)"
+              >
+                删除
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -154,5 +216,14 @@ useVisiblePolling(refresh, POLL_INTERVAL_MS)
         </button>
       </nav>
     </template>
+
+    <ConfirmDialog
+      :open="pendingDelete !== null"
+      title="删除监控项"
+      :message="`确定删除「${pendingDelete?.name ?? ''}」吗？历史结果与心跳凭证会一并删除。`"
+      confirm-label="确认删除"
+      @confirm="confirmDelete"
+      @cancel="pendingDelete = null"
+    />
   </section>
 </template>
