@@ -32,7 +32,23 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
    如需覆盖默认值，复制 `.env.example` 为 `.env` 并修改。后端不会自动读取 `.env`，修改数据库账号密码后需同时导出对应的 `DB_*` 变量。
 
-2. 启动后端：
+2. 首次启动前设置引导管理员（仅当 `app_user` 为空时使用）：
+
+   ```bash
+   export PULSEOPS_AUTH_BOOTSTRAP_USERNAME='admin'
+   export PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH='{bcrypt}$2y$12$...'
+   ```
+
+   使用 Docker 生成 BCrypt 哈希（成本因子 12）：
+
+   ```bash
+   docker run --rm httpd:2.4-alpine \
+     htpasswd -bnBC 12 "" 'your-password' | cut -d: -f2 | tr -d '\n'
+   ```
+
+   在输出前加 `{bcrypt}`，并用单引号包裹以避免 shell 展开 `$`。账号创建后可移除这两个变量；表非空时它们会被忽略并记录 WARN，不会覆盖已有账号。
+
+3. 启动后端：
 
    ```bash
    cd backend
@@ -41,7 +57,9 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
    健康检查：`curl http://localhost:8080/actuator/health`
 
-3. 启动前端：
+   用户表为空且缺少引导变量、用户名或哈希非法，或监听非回环地址但未启用 Secure Cookie 时，应用会拒绝启动。
+
+4. 启动前端：
 
    ```bash
    cd frontend
@@ -60,7 +78,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 - 检查历史分页、活动 Incident、Incident 过滤与通知投递状态。
 - 心跳一次性令牌、上报命令、轮换与撤销。
 
-管理 API 默认只监听回环地址，Phase 4A 未启用认证；在 Phase 4B 完成前不得将 UI 或管理 API 暴露到公网。
+管理 API 默认只监听回环地址。Phase 4B-1 已建立账号与启动校验，但认证过滤器链与登录接口尚未启用；在 Phase 4B 完成前不得将 UI 或管理 API 暴露到公网。
 
 ## 配置
 
@@ -73,6 +91,9 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `DB_PASSWORD` | `pulseops` | 数据库密码，非本地环境必须覆盖 |
 | `SERVER_PORT` | `8080` | HTTP 端口 |
 | `SERVER_ADDRESS` | `127.0.0.1` | 监听地址；Phase 4B 认证门槛完成前保持回环地址（见 [`docs/quality/deployment.md`](docs/quality/deployment.md)） |
+| `PULSEOPS_AUTH_BOOTSTRAP_USERNAME` | 空 | 首次启动创建管理员的用户名；仅当 `app_user` 为空时生效 |
+| `PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH` | 空 | 首次启动管理员的 `{bcrypt}` 哈希；必须与用户名同时配置 |
+| `PULSEOPS_AUTH_COOKIE_SECURE` | `false` | 会话与 CSRF Cookie 的 `Secure` 属性；非回环监听时必须为 `true` |
 | `PULSEOPS_TELEGRAM_BOT_TOKEN` | 空（通知关闭） | Telegram Bot Token；必须与 Chat ID 同时配置 |
 | `PULSEOPS_TELEGRAM_CHAT_ID` | 空（通知关闭） | Telegram Chat ID |
 | `PULSEOPS_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API 基地址，仅用于测试或代理 |

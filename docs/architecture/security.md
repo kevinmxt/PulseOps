@@ -30,6 +30,7 @@
 
 ## 认证与授权
 - 公网管理入口的发布门槛见 [`../quality/deployment.md`](../quality/deployment.md) 的“公网发布硬性门槛”；本节规定认证实现要求。
+- 账号存于 `app_user`，首次启动由引导变量创建唯一管理员；空表缺少引导变量、用户名或哈希非法、非回环监听且未启用 Secure Cookie 时拒绝启动。
 - 密码使用成熟的安全哈希算法。
 - 正确配置 Cookie / Session 安全属性。
 - 根据认证方式实施 CSRF 防护。

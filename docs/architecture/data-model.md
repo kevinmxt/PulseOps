@@ -76,6 +76,19 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 
 数据库只保存安全摘要，不保存明文令牌。令牌必须足够随机并可撤销。每个 Monitor 同时最多一个未撤销凭证，由部分唯一索引保证；删除 Monitor 时级联删除凭证。
 
+## AppUser
+管理后台唯一的账号事实来源。
+
+核心字段：
+- `id`
+- `username`：唯一、区分大小写，1–64 字符，匹配 `[A-Za-z0-9._-]`；输入前后空白在入库前裁剪
+- `password_hash`：`{bcrypt}$2...`，BCrypt 成本 12；不保存明文或可逆密文
+- `role`：当前只允许 `ADMIN`，由 CHECK 约束保证；增加角色时通过迁移扩展
+- `created_at`
+- `updated_at`
+
+首次启动时如果表为空，应用使用 `PULSEOPS_AUTH_BOOTSTRAP_USERNAME` 与 `PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH` 创建唯一管理员；变量缺失、用户名或哈希非法时拒绝启动。表非空时忽略引导变量并记录 WARN，不覆盖已有账号。认证与启动校验行为见 [`specs/auth.md`](../specs/auth.md)。
+
 ## NotificationDelivery
 - `id`
 - `incident_id`

@@ -29,6 +29,10 @@ pulseops:
     tick-interval: 5s
     batch-size: 100
     scheduling-enabled: true
+  auth:
+    cookie-secure: ${PULSEOPS_AUTH_COOKIE_SECURE:false}
+    bootstrap-username: ${PULSEOPS_AUTH_BOOTSTRAP_USERNAME:}
+    bootstrap-password-hash: ${PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH:}
 
 server:
   port: ${SERVER_PORT:8080}
