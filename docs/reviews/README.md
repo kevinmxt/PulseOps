@@ -57,3 +57,20 @@ Phase 2 已完成，当前可进入 Phase 3（Heartbeat）。代码整体质量�
 ## 结论摘要
 
 Phase 3 已完成，可以进入 Phase 4A（最小可用 UI）。代码整体质量继续保持较好，已满足当前单实例、事务性 outbox、心跳超时与恢复语义的设计目标。审阅中唯一比较值得顺手改进的是：**通知重试期间的 `lastErrorSummary` 目前只在终态失败时写入，PENDING 重试态下对排障不够直观**。
+
+# PulseOps Phase 4A 审阅资料
+
+## 阅读顺序
+
+1. [`phase4a-review.md`](phase4a-review.md)：Phase 4A UI、API 客户端、异步状态与验证边界的代码审阅。
+2. [`phase4a-roadmap-notes.md`](phase4a-roadmap-notes.md)：Phase 4A 完成后的路线建议，重点为 Phase 4B。
+3. [`phase4a-remediation.md`](phase4a-remediation.md)：后续可处理的前端可靠性修正清单。
+
+## 审阅范围与结论
+
+- 审阅对象：本次上传的 `PulseOps-master (3).zip` 源码快照。
+- Phase 4A 按仓库已有 `docs/quality/phase4a-acceptance.md` 验收记录完成；本次静态审阅未发现阻断进入 Phase 4B 的高危问题。
+- 建议跟进：详情/Incident 列表过期响应保护、响应体读取阶段的超时错误映射、列表轮询与分页竞争。
+- 本次审阅环境的 Node.js 版本不符合 `frontend/.nvmrc`，依赖安装未在时限内完成；本报告不声称本机重新跑通前端测试或构建。
+- Phase 1、Phase 2、Phase 3 的历史审阅结论及原有索引均保留。
+
