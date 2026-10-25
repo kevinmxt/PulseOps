@@ -9,6 +9,7 @@ import type {
   PageResponse,
 } from '../api/types'
 import { createAppRouter } from '../router'
+import { deferred } from '../test/deferred'
 import IncidentListView from './IncidentListView.vue'
 
 vi.mock('../api/client', async () => {
@@ -214,5 +215,74 @@ describe('IncidentListView', () => {
     expect(listIncidentsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ monitorId: 5, page: 0 }),
     )
+  })
+
+  it('ignores a late response after changing the status filter', async () => {
+    const open = deferred<PageResponse<Incident>>()
+    const resolved = deferred<PageResponse<Incident>>()
+    listIncidentsMock.mockImplementation((query = {}) =>
+      query.status === 'OPEN' ? open.promise : resolved.promise,
+    )
+
+    const { wrapper } = await mountIncidents()
+    await wrapper.find('#incident-status').setValue('RESOLVED')
+
+    resolved.resolve(page([incident(21, { status: 'RESOLVED', summary: 'resolved row' })]))
+    await flushPromises()
+    expect(wrapper.text()).toContain('resolved row')
+
+    open.resolve(page([incident(11, { status: 'OPEN', summary: 'open row' })]))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('resolved row')
+    expect(wrapper.text()).not.toContain('open row')
+  })
+
+  it('ignores a late error after changing the status filter', async () => {
+    const open = deferred<PageResponse<Incident>>()
+    listIncidentsMock.mockImplementation((query = {}) =>
+      query.status === 'OPEN'
+        ? open.promise
+        : Promise.resolve(page([incident(21, { status: 'RESOLVED', summary: 'resolved row' })])),
+    )
+
+    const { wrapper } = await mountIncidents()
+    await wrapper.find('#incident-status').setValue('RESOLVED')
+    await flushPromises()
+    expect(wrapper.text()).toContain('resolved row')
+
+    open.reject(
+      new ApiError('old incidents failed', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-old',
+      }),
+    )
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('resolved row')
+    expect(wrapper.text()).not.toContain('old incidents failed')
+    expect(wrapper.text()).not.toContain('trace-old')
+  })
+
+  it('keeps loading while the newest filter request is still pending', async () => {
+    const open = deferred<PageResponse<Incident>>()
+    const resolved = deferred<PageResponse<Incident>>()
+    listIncidentsMock.mockImplementation((query = {}) =>
+      query.status === 'OPEN' ? open.promise : resolved.promise,
+    )
+
+    const { wrapper } = await mountIncidents()
+    await wrapper.find('#incident-status').setValue('RESOLVED')
+
+    open.resolve(page([incident(11, { status: 'OPEN', summary: 'open row' })]))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载中…')
+    expect(wrapper.text()).not.toContain('open row')
+
+    resolved.resolve(page([incident(21, { status: 'RESOLVED', summary: 'resolved row' })]))
+    await flushPromises()
+    expect(wrapper.text()).toContain('resolved row')
   })
 })

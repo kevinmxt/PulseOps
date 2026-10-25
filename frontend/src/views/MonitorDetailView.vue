@@ -38,6 +38,10 @@ const incidents = ref<Incident[]>([])
 const incidentsLoading = ref(false)
 const incidentsError = ref<ErrorDetails | null>(null)
 
+let loadAllRequestId = 0
+let checksRequestId = 0
+let incidentsRequestId = 0
+
 function monitorId(): number | null {
   const id = Number(props.id)
   return Number.isInteger(id) && id > 0 ? id : null
@@ -48,17 +52,26 @@ async function loadChecks(targetPage: number): Promise<void> {
   if (id === null) {
     return
   }
+  const requestId = ++checksRequestId
   checksLoading.value = true
   checksError.value = null
   try {
     const result = await listChecks(id, targetPage, CHECKS_PAGE_SIZE)
+    if (requestId !== checksRequestId) {
+      return
+    }
     checks.value = result.items
     checksPage.value = result.page
     checksTotal.value = result.totalElements
   } catch (cause) {
+    if (requestId !== checksRequestId) {
+      return
+    }
     checksError.value = toErrorDetails(cause)
   } finally {
-    checksLoading.value = false
+    if (requestId === checksRequestId) {
+      checksLoading.value = false
+    }
   }
 }
 
@@ -67,6 +80,7 @@ async function loadOpenIncidents(): Promise<void> {
   if (id === null) {
     return
   }
+  const requestId = ++incidentsRequestId
   incidentsLoading.value = true
   incidentsError.value = null
   try {
@@ -76,15 +90,24 @@ async function loadOpenIncidents(): Promise<void> {
       page: 0,
       size: OPEN_INCIDENT_LIMIT,
     })
+    if (requestId !== incidentsRequestId) {
+      return
+    }
     incidents.value = result.items
   } catch (cause) {
+    if (requestId !== incidentsRequestId) {
+      return
+    }
     incidentsError.value = toErrorDetails(cause)
   } finally {
-    incidentsLoading.value = false
+    if (requestId === incidentsRequestId) {
+      incidentsLoading.value = false
+    }
   }
 }
 
 async function loadAll(): Promise<void> {
+  const requestId = ++loadAllRequestId
   loading.value = true
   error.value = null
   monitor.value = null
@@ -94,25 +117,40 @@ async function loadAll(): Promise<void> {
   checksError.value = null
   incidents.value = []
   incidentsError.value = null
+  checksRequestId += 1
+  incidentsRequestId += 1
+  checksLoading.value = false
+  incidentsLoading.value = false
 
   const id = monitorId()
   if (id === null) {
-    error.value = {
-      code: 'INVALID_MONITOR_ID',
-      message: '监控项 ID 无效',
-      traceId: null,
+    if (requestId === loadAllRequestId) {
+      error.value = {
+        code: 'INVALID_MONITOR_ID',
+        message: '监控项 ID 无效',
+        traceId: null,
+      }
+      loading.value = false
     }
-    loading.value = false
     return
   }
 
   try {
-    monitor.value = await getMonitor(id)
+    const loadedMonitor = await getMonitor(id)
+    if (requestId !== loadAllRequestId) {
+      return
+    }
+    monitor.value = loadedMonitor
     await Promise.all([loadChecks(0), loadOpenIncidents()])
   } catch (cause) {
+    if (requestId !== loadAllRequestId) {
+      return
+    }
     error.value = toErrorDetails(cause)
   } finally {
-    loading.value = false
+    if (requestId === loadAllRequestId) {
+      loading.value = false
+    }
   }
 }
 

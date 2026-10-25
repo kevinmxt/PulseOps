@@ -26,18 +26,21 @@ const refreshing = ref(false)
 const error = ref<ErrorDetails | null>(null)
 const actionBusyId = ref<number | null>(null)
 const pendingDelete = ref<Monitor | null>(null)
-let pendingReload = false
+let pendingReloadPage: number | null = null
+let desiredPage = 0
 
 function applyResult(result: PageResponse<Monitor>): void {
   monitors.value = result.items
   page.value = result.page
   totalElements.value = result.totalElements
+  desiredPage = result.page
   error.value = null
 }
 
 async function load(targetPage = page.value, initial = false): Promise<void> {
+  desiredPage = targetPage
   if (refreshing.value) {
-    pendingReload = true
+    pendingReloadPage = targetPage
     return
   }
   refreshing.value = true
@@ -57,15 +60,16 @@ async function load(targetPage = page.value, initial = false): Promise<void> {
   } finally {
     loading.value = false
     refreshing.value = false
-    if (pendingReload) {
-      pendingReload = false
-      void load(page.value)
+    if (pendingReloadPage !== null) {
+      const nextPage = pendingReloadPage
+      pendingReloadPage = null
+      void load(nextPage)
     }
   }
 }
 
 function refresh(): void {
-  void load(page.value)
+  void load(desiredPage)
 }
 
 function goToPage(target: number): void {

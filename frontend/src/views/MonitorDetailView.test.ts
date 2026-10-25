@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, getMonitor, listChecks, listIncidents } from '../api/client'
 import type { CheckResult, Incident, Monitor, PageResponse } from '../api/types'
 import { createAppRouter } from '../router'
+import { deferred } from '../test/deferred'
 import MonitorDetailView from './MonitorDetailView.vue'
 
 vi.mock('../api/client', async () => {
@@ -250,5 +251,107 @@ describe('MonitorDetailView', () => {
     expect(wrapper.text()).toContain('INTERNAL_ERROR')
     expect(wrapper.text()).toContain('history failed')
     expect(buttonByText(wrapper, '重试')).toBeDefined()
+  })
+
+  it('ignores a late monitor response after the id changes', async () => {
+    const monitor4 = deferred<Monitor>()
+    const monitor5 = deferred<Monitor>()
+    getMonitorMock.mockImplementation((id) => (id === 4 ? monitor4.promise : monitor5.promise))
+    listChecksMock.mockResolvedValue(page([]))
+    listIncidentsMock.mockResolvedValue(page([]))
+
+    const { wrapper } = await mountDetail('4')
+    await wrapper.setProps({ id: '5' })
+
+    monitor5.resolve(monitor({ id: 5, name: 'Monitor Five' }))
+    await flushPromises()
+    expect(wrapper.text()).toContain('Monitor Five')
+
+    monitor4.resolve(monitor({ id: 4, name: 'Monitor Four' }))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Monitor Five')
+    expect(wrapper.text()).not.toContain('Monitor Four')
+    expect(listChecksMock).toHaveBeenCalledTimes(1)
+    expect(listChecksMock).toHaveBeenCalledWith(5, 0, 20)
+  })
+
+  it('ignores a late check error after switching monitors', async () => {
+    const checks4 = deferred<PageResponse<CheckResult>>()
+    getMonitorMock.mockResolvedValue(monitor())
+    listChecksMock.mockImplementation((id) =>
+      id === 4
+        ? checks4.promise
+        : Promise.resolve(page([check(51, false, { errorSummary: 'new check' })])),
+    )
+    listIncidentsMock.mockResolvedValue(page([]))
+
+    const { wrapper } = await mountDetail('4')
+    await wrapper.setProps({ id: '5' })
+    await flushPromises()
+    expect(wrapper.text()).toContain('new check')
+
+    checks4.reject(
+      new ApiError('old history failed', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-old',
+      }),
+    )
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('new check')
+    expect(wrapper.text()).not.toContain('old history failed')
+    expect(wrapper.text()).not.toContain('trace-old')
+  })
+
+  it('keeps loading while the newest monitor request is still pending', async () => {
+    const monitor4 = deferred<Monitor>()
+    const monitor5 = deferred<Monitor>()
+    getMonitorMock.mockImplementation((id) => (id === 4 ? monitor4.promise : monitor5.promise))
+    listChecksMock.mockResolvedValue(page([]))
+    listIncidentsMock.mockResolvedValue(page([]))
+
+    const { wrapper } = await mountDetail('4')
+    await wrapper.setProps({ id: '5' })
+
+    monitor4.resolve(monitor({ id: 4, name: 'Monitor Four' }))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('加载中…')
+    expect(wrapper.text()).not.toContain('Monitor Four')
+
+    monitor5.resolve(monitor({ id: 5, name: 'Monitor Five' }))
+    await flushPromises()
+    expect(wrapper.text()).toContain('Monitor Five')
+  })
+
+  it('ignores a late incident error after switching monitors', async () => {
+    const incidents4 = deferred<PageResponse<Incident>>()
+    getMonitorMock.mockResolvedValue(monitor())
+    listChecksMock.mockResolvedValue(page([]))
+    listIncidentsMock.mockImplementation((query = {}) =>
+      query.monitorId === 4
+        ? incidents4.promise
+        : Promise.resolve(page([incident(51, { monitorId: 5, summary: 'new incident' })])),
+    )
+
+    const { wrapper } = await mountDetail('4')
+    await wrapper.setProps({ id: '5' })
+    await flushPromises()
+    expect(wrapper.text()).toContain('new incident')
+
+    incidents4.reject(
+      new ApiError('old incidents failed', {
+        code: 'INTERNAL_ERROR',
+        status: 500,
+        traceId: 'trace-old-incident',
+      }),
+    )
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('new incident')
+    expect(wrapper.text()).not.toContain('old incidents failed')
+    expect(wrapper.text()).not.toContain('trace-old-incident')
   })
 })

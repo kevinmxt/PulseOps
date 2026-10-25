@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  ApiError,
   createMonitor,
   deleteMonitor,
   getIncident,
@@ -72,6 +73,23 @@ describe('api client', () => {
     )
 
     await expect(getMonitor(1)).rejects.toMatchObject({
+      code: 'TIMEOUT',
+      message: '请求超时',
+      status: null,
+      traceId: null,
+    })
+  })
+
+  it('maps response body aborts to a timeout error', async () => {
+    const response = new Response(null, { status: 200 })
+    vi.spyOn(response, 'text').mockRejectedValue(
+      new DOMException('The operation was aborted.', 'AbortError'),
+    )
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
+
+    const request = getMonitor(1)
+    await expect(request).rejects.toBeInstanceOf(ApiError)
+    await expect(request).rejects.toMatchObject({
       code: 'TIMEOUT',
       message: '请求超时',
       status: null,
