@@ -122,7 +122,7 @@ class AuthStartupValidatorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"127.0.0.1", "::1", "[::1]", "localhost", "LOCALHOST", " 127.0.0.1 "})
+    @ValueSource(strings = {"127.0.0.1", "::1", "localhost", "LOCALHOST", " 127.0.0.1 "})
     void allowsLoopbackBindWithoutSecureCookie(String address) {
         when(repository.count()).thenReturn(3L);
 

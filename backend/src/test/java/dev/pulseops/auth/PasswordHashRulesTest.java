@@ -17,15 +17,21 @@ class PasswordHashRulesTest {
     }
 
     @Test
-    void acceptsBcryptVariantsAndOtherValidCosts() {
+    void acceptsBcryptVariantsAtCost12() {
         String hash = new BCryptPasswordEncoder(12).encode("test-password");
         String twoY = hash.replace("$2a$", "$2y$");
         String twoB = hash.replace("$2a$", "$2b$");
-        String cost10 = new BCryptPasswordEncoder(10).encode("test-password");
 
         assertThat(PasswordHashRules.isValidBcryptHash("{bcrypt}" + twoY)).isTrue();
         assertThat(PasswordHashRules.isValidBcryptHash("{bcrypt}" + twoB)).isTrue();
-        assertThat(PasswordHashRules.isValidBcryptHash("{bcrypt}" + cost10)).isTrue();
+    }
+
+    @Test
+    void rejectsOtherCosts() {
+        assertThat(PasswordHashRules.isValidBcryptHash(
+                "{bcrypt}" + new BCryptPasswordEncoder(10).encode("test-password"))).isFalse();
+        assertThat(PasswordHashRules.isValidBcryptHash(
+                "{bcrypt}$2a$13$" + "A".repeat(53))).isFalse();
     }
 
     @ParameterizedTest
@@ -41,9 +47,7 @@ class PasswordHashRulesTest {
     }
 
     @Test
-    void rejectsNullAndOutOfRangeCosts() {
+    void rejectsNull() {
         assertThat(PasswordHashRules.isValidBcryptHash(null)).isFalse();
-        assertThat(PasswordHashRules.isValidBcryptHash("{bcrypt}$2a$03$" + "A".repeat(53))).isFalse();
-        assertThat(PasswordHashRules.isValidBcryptHash("{bcrypt}$2a$32$" + "A".repeat(53))).isFalse();
     }
 }

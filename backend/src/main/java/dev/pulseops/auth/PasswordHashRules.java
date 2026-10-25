@@ -7,8 +7,7 @@ public final class PasswordHashRules {
 
     private static final Pattern BCRYPT =
             Pattern.compile("^\\{bcrypt\\}\\$2[aby]\\$(\\d{2})\\$[./A-Za-z0-9]{53}$");
-    private static final int MIN_COST = 4;
-    private static final int MAX_COST = 31;
+    private static final int REQUIRED_COST = 12;
 
     private PasswordHashRules() {
     }
@@ -21,7 +20,6 @@ public final class PasswordHashRules {
         if (!matcher.matches()) {
             return false;
         }
-        int cost = Integer.parseInt(matcher.group(1));
-        return cost >= MIN_COST && cost <= MAX_COST;
+        return Integer.parseInt(matcher.group(1)) == REQUIRED_COST;
     }
 }

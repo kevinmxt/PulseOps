@@ -15,7 +15,7 @@ public class AuthStartupValidator {
 
     private static final Logger log = LoggerFactory.getLogger(AuthStartupValidator.class);
     private static final Set<String> LOOPBACK_ADDRESSES =
-            Set.of("127.0.0.1", "::1", "[::1]", "localhost");
+            Set.of("127.0.0.1", "::1", "localhost");
 
     private final AppUserRepository userRepository;
     private final AuthProperties properties;
@@ -34,10 +34,12 @@ public class AuthStartupValidator {
         long existingUsers = userRepository.count();
         boolean usernameProvided = StringUtils.hasText(properties.bootstrapUsername());
         boolean hashProvided = StringUtils.hasText(properties.bootstrapPasswordHash());
+        String bootstrapUsername = null;
 
         if (existingUsers == 0) {
             requireBootstrapCredentials(usernameProvided, hashProvided);
-            validateBootstrapCredentials();
+            bootstrapUsername = validateBootstrapUsername();
+            validateBootstrapHash();
         }
 
         if (!isLoopback(serverAddress) && !properties.cookieSecure()) {
@@ -56,7 +58,7 @@ public class AuthStartupValidator {
             return;
         }
 
-        createBootstrapAdmin();
+        createBootstrapAdmin(bootstrapUsername);
     }
 
     private void requireBootstrapCredentials(boolean usernameProvided, boolean hashProvided) {
@@ -74,23 +76,26 @@ public class AuthStartupValidator {
                 + String.join(", ", missing) + ". Set both variables for the first startup.");
     }
 
-    private void validateBootstrapCredentials() {
+    private String validateBootstrapUsername() {
         try {
-            UsernameRules.normalize(properties.bootstrapUsername());
+            return UsernameRules.normalize(properties.bootstrapUsername());
         } catch (IllegalArgumentException ex) {
             throw new AuthStartupException(
                     "PULSEOPS_AUTH_BOOTSTRAP_USERNAME is invalid: " + ex.getMessage());
         }
+    }
+
+    private void validateBootstrapHash() {
         if (!PasswordHashRules.isValidBcryptHash(properties.bootstrapPasswordHash())) {
             throw new AuthStartupException("PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH must be a valid "
-                    + "{bcrypt}$2a$.. or {bcrypt}$2b$.. or {bcrypt}$2y$.. hash.");
+                    + "{bcrypt}$2a$12$.. or {bcrypt}$2b$12$.. or {bcrypt}$2y$12$.. hash.");
         }
     }
 
-    private void createBootstrapAdmin() {
+    private void createBootstrapAdmin(String username) {
         Instant now = clock.instant();
         AppUserEntity user = new AppUserEntity();
-        user.setUsername(UsernameRules.normalize(properties.bootstrapUsername()));
+        user.setUsername(username);
         user.setPasswordHash(properties.bootstrapPasswordHash());
         user.setRole(AppRole.ADMIN);
         user.setCreatedAt(now);

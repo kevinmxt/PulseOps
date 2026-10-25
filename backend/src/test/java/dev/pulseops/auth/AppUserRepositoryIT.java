@@ -70,6 +70,15 @@ class AppUserRepositoryIT {
     }
 
     @Test
+    void trimsAndValidatesUsernameInputForLookup() {
+        repository.save(user("TrimmedInputUser"));
+
+        assertThat(repository.findByUsernameInput("  TrimmedInputUser  ")).isPresent();
+        assertThat(repository.findByUsernameInput("trimmedinputuser")).isEmpty();
+        assertThat(repository.findByUsernameInput("bad name")).isEmpty();
+    }
+
+    @Test
     void rejectsDuplicateUsername() {
         repository.save(user("duplicate-user"));
 
