@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；下一阶段为 Phase 4B — 认证与数据维护。
+Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；Phase 4B 进行中（4B-1、4B-2 已完成），剩余历史数据保留与备份恢复任务。
 
 ## 阶段顺序
 
@@ -71,9 +71,9 @@ Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../
 完成条件：核心功能可仅通过 UI 完成。完成证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)。
 
 ### Phase 4B：认证与数据维护（公网前硬门槛）
-- [ ] 单用户认证与授权，覆盖所有管理 API
-- [ ] 未认证访问返回 401/403 的集成测试
-- [ ] 生产 profile 启动检查：公开监听且未启用认证时拒绝启动
+- [x] 单用户认证与授权，覆盖所有管理 API
+- [x] 未认证访问返回 401/403 的集成测试
+- [x] 生产 profile 启动检查：公开监听且未启用认证时拒绝启动
 - [ ] 历史数据保留策略与分批清理任务
 - [ ] 备份与恢复演练
 

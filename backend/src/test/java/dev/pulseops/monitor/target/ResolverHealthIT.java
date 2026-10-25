@@ -20,7 +20,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static dev.pulseops.support.AuthenticatedApiRequests.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
