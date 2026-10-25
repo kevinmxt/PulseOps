@@ -4,9 +4,12 @@ import type {
   Incident,
   IncidentDetail,
   IncidentQuery,
+  LoginResponse,
   Monitor,
   MonitorInput,
   PageResponse,
+  PasswordChangeInput,
+  SessionInfo,
 } from './types'
 
 interface ApiErrorEnvelope {
@@ -17,25 +20,53 @@ interface ApiErrorEnvelope {
 
 const REQUEST_TIMEOUT_MS = 15_000
 
+let csrfToken: string | null = null
+let unauthorizedHandler: (() => void) | null = null
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler
+}
+
 export class ApiError extends Error {
   readonly code: string
   readonly status: number | null
   readonly traceId: string | null
+  readonly retryAfterSeconds: number | null
 
   constructor(
     message: string,
-    options: { code: string; status: number | null; traceId?: string | null; cause?: unknown },
+    options: {
+      code: string
+      status: number | null
+      traceId?: string | null
+      retryAfterSeconds?: number | null
+      cause?: unknown
+    },
   ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause })
     this.name = 'ApiError'
     this.code = options.code
     this.status = options.status
     this.traceId = options.traceId ?? null
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { init: requestInit, cancelTimeout } = withTimeout(init)
+interface RequestOptions {
+  skipAuthHandling?: boolean
+  csrfRetried?: boolean
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  options: RequestOptions = {},
+): Promise<T> {
+  const { init: requestInit, cancelTimeout } = withTimeout(withCsrfHeader(init))
   try {
     let response: Response
     try {
@@ -49,11 +80,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const payload = await readJson(response)
     if (!response.ok) {
       const envelope = errorEnvelope(payload)
-      throw new ApiError(envelope?.message ?? `请求失败（HTTP ${response.status}）`, {
+      const error = new ApiError(envelope?.message ?? `请求失败（HTTP ${response.status}）`, {
         code: envelope?.code ?? 'UNKNOWN_ERROR',
         status: response.status,
         traceId: envelope?.traceId ?? null,
+        retryAfterSeconds: retryAfterSeconds(response),
       })
+      if (response.status === 403 && error.code === 'CSRF_INVALID' && !options.csrfRetried) {
+        try {
+          await refreshCsrfToken()
+        } catch {
+          throw error
+        }
+        return request<T>(path, init, { ...options, csrfRetried: true })
+      }
+      if (response.status === 401 && !options.skipAuthHandling) {
+        unauthorizedHandler?.()
+      }
+      throw error
     }
     if (payload === null) {
       throw new ApiError('响应不是有效的 JSON', {
@@ -90,6 +134,50 @@ function withTimeout(init: RequestInit): { init: RequestInit; cancelTimeout: () 
   }
 }
 
+function withCsrfHeader(init: RequestInit): RequestInit {
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (method === 'GET') {
+    return init
+  }
+  const token = csrfToken ?? readCookie('XSRF-TOKEN')
+  if (!token) {
+    return init
+  }
+  const headers = {
+    ...(init.headers as Record<string, string> | undefined),
+    'X-XSRF-TOKEN': token,
+  }
+  return { ...init, headers }
+}
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+  const prefix = `${name}=`
+  for (const part of document.cookie.split(';')) {
+    const entry = part.trim()
+    if (entry.startsWith(prefix)) {
+      return decodeURIComponent(entry.slice(prefix.length))
+    }
+  }
+  return null
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const value = response.headers.get('Retry-After')
+  if (!value) {
+    return null
+  }
+  const seconds = Number(value)
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null
+}
+
+async function refreshCsrfToken(): Promise<void> {
+  const session = await getSession()
+  setCsrfToken(session.csrfToken)
+}
+
 async function readJson(response: Response): Promise<unknown> {
   let text: string
   try {
@@ -120,6 +208,38 @@ function errorEnvelope(payload: unknown): ApiErrorEnvelope | null {
     message: record.message,
     traceId: typeof record.traceId === 'string' ? record.traceId : null,
   }
+}
+
+export function getSession(): Promise<SessionInfo> {
+  return request<SessionInfo>(
+    '/api/v1/auth/session',
+    { method: 'GET' },
+    { skipAuthHandling: true },
+  )
+}
+
+export function login(username: string, password: string): Promise<LoginResponse> {
+  return request<LoginResponse>(
+    '/api/v1/auth/login',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    },
+    { skipAuthHandling: true },
+  )
+}
+
+export function logout(): Promise<void> {
+  return request<void>('/api/v1/auth/logout', { method: 'POST' })
+}
+
+export function changePassword(input: PasswordChangeInput): Promise<void> {
+  return request<void>('/api/v1/auth/password', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
 }
 
 export function listMonitors(page = 0, size = 20): Promise<PageResponse<Monitor>> {

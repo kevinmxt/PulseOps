@@ -9,6 +9,7 @@ import type {
   PageResponse,
 } from '../api/types'
 import { createAppRouter } from '../router'
+import { authenticateForTest } from '../test/auth'
 import { deferred } from '../test/deferred'
 import IncidentListView from './IncidentListView.vue'
 
@@ -75,6 +76,7 @@ async function mountIncidents(path = '/incidents') {
 
 describe('IncidentListView', () => {
   beforeEach(() => {
+    authenticateForTest()
     listIncidentsMock.mockReset()
     getIncidentMock.mockReset()
   })
