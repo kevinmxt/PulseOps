@@ -89,3 +89,21 @@ _Avoid_: Notification Log、Send Result
 **Notification Channel（通知渠道）**：
 接收通知的外部目的地类型；MVP 仅支持 Telegram。
 _Avoid_: Provider、Integration
+
+### 认证与数据维护
+
+**Admin Account（管理员账号）**：
+PulseOps 中可登录管理界面的身份；MVP 只有一个，未来可以扩展为多个账号与角色。
+_Avoid_: User、Operator、Login
+
+**Role（角色）**：
+授予账号的权限类别；MVP 只有 `ADMIN`。
+_Avoid_: Permission、Group
+
+**Admin Session（管理会话）**：
+管理员登录后由服务端保存的认证状态，直到登出、空闲超时或绝对期限到达。
+_Avoid_: Login Token、Cookie、JWT
+
+**Retention Period（保留期限）**：
+历史数据在被自动清理前允许存在的最长时间。
+_Avoid_: TTL、Expiry、Expiration
