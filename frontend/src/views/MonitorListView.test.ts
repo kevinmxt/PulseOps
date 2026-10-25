@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, deleteMonitor, listMonitors, updateMonitor } from '../api/client'
 import type { Monitor, PageResponse } from '../api/types'
+import PaginationControls from '../components/PaginationControls.vue'
+import { deferred } from '../test/deferred'
 import MonitorListView from './MonitorListView.vue'
 
 vi.mock('../api/client', async () => {
@@ -326,6 +328,61 @@ describe('MonitorListView', () => {
     expect(wrapper.text()).toContain('VALIDATION_ERROR')
     expect(wrapper.text()).toContain('更新失败')
     expect(wrapper.text()).toContain('trace-6')
+
+    wrapper.unmount()
+  })
+
+  it('keeps the requested page when pagination happens during a refresh', async () => {
+    vi.useFakeTimers()
+    const poll = deferred<PageResponse<Monitor>>()
+    listMonitorsMock
+      .mockResolvedValueOnce(page([monitor({ id: 1 })], { page: 0, totalElements: 25 }))
+      .mockReturnValueOnce(poll.promise)
+      .mockResolvedValueOnce(page([monitor({ id: 2 })], { page: 1, totalElements: 25 }))
+
+    const wrapper = mountView()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(wrapper.text()).toContain('第 1 / 2 页')
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(listMonitorsMock).toHaveBeenCalledTimes(2)
+
+    wrapper.findComponent(PaginationControls).vm.$emit('change', 1)
+    poll.resolve(page([monitor({ id: 1 })], { page: 0, totalElements: 25 }))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(listMonitorsMock).toHaveBeenLastCalledWith(1, 20)
+    expect(wrapper.text()).toContain('第 2 / 2 页')
+
+    wrapper.unmount()
+  })
+
+  it('keeps the user page when a poll fires during a pagination request', async () => {
+    vi.useFakeTimers()
+    const userPage = deferred<PageResponse<Monitor>>()
+    listMonitorsMock
+      .mockResolvedValueOnce(page([monitor({ id: 1 })], { page: 0, totalElements: 25 }))
+      .mockReturnValueOnce(userPage.promise)
+      .mockImplementation((pageNumber = 0) =>
+        Promise.resolve(
+          page([monitor({ id: pageNumber + 1 })], { page: pageNumber, totalElements: 25 }),
+        ),
+      )
+
+    const wrapper = mountView()
+    await vi.advanceTimersByTimeAsync(0)
+
+    await buttonByText(wrapper, '下一页').trigger('click')
+    expect(listMonitorsMock).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(listMonitorsMock).toHaveBeenCalledTimes(2)
+
+    userPage.resolve(page([monitor({ id: 2 })], { page: 1, totalElements: 25 }))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(listMonitorsMock).toHaveBeenLastCalledWith(1, 20)
+    expect(wrapper.text()).toContain('第 2 / 2 页')
 
     wrapper.unmount()
   })

@@ -35,6 +35,7 @@ const expandedId = ref<number | null>(null)
 const deliveries = ref<NotificationDelivery[]>([])
 const deliveryLoading = ref(false)
 const deliveryError = ref<ErrorDetails | null>(null)
+let listRequestId = 0
 let deliveryRequestId = 0
 
 const monitorId = computed<number | null>(() => {
@@ -48,6 +49,7 @@ const monitorId = computed<number | null>(() => {
 })
 
 async function load(targetPage = page.value, initial = false): Promise<void> {
+  const requestId = ++listRequestId
   if (initial || targetPage !== page.value) {
     loading.value = true
   }
@@ -64,13 +66,21 @@ async function load(targetPage = page.value, initial = false): Promise<void> {
       page: targetPage,
       size: PAGE_SIZE,
     })
+    if (requestId !== listRequestId) {
+      return
+    }
     incidents.value = result.items
     page.value = result.page
     totalElements.value = result.totalElements
   } catch (cause) {
+    if (requestId !== listRequestId) {
+      return
+    }
     error.value = toErrorDetails(cause)
   } finally {
-    loading.value = false
+    if (requestId === listRequestId) {
+      loading.value = false
+    }
   }
 }
 

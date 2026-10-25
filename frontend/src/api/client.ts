@@ -91,7 +91,12 @@ function withTimeout(init: RequestInit): { init: RequestInit; cancelTimeout: () 
 }
 
 async function readJson(response: Response): Promise<unknown> {
-  const text = await response.text()
+  let text: string
+  try {
+    text = await response.text()
+  } catch (cause) {
+    throw networkError(cause)
+  }
   if (!text) {
     return null
   }
