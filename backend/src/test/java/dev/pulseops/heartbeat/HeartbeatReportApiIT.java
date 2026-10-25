@@ -30,9 +30,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static dev.pulseops.support.AuthenticatedApiRequests.delete;
+import static dev.pulseops.support.AuthenticatedApiRequests.get;
+import static dev.pulseops.support.AuthenticatedApiRequests.post;
+import static dev.pulseops.support.AuthenticatedApiRequests.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -98,8 +99,7 @@ class HeartbeatReportApiIT {
         assertThat(result.getStartedAt()).isEqualTo(reloaded.getLastHeartbeatAt());
         assertThat(result.getFinishedAt()).isEqualTo(reloaded.getLastHeartbeatAt());
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .get("/api/v1/monitors/{id}", monitor.id()))
+        mockMvc.perform(get("/api/v1/monitors/{id}", monitor.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentStatus").value("UP"))
                 .andExpect(jsonPath("$.lastHeartbeatAt").isNotEmpty());

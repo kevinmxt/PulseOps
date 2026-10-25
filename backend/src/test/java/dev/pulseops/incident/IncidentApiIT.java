@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static dev.pulseops.support.AuthenticatedApiRequests.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 

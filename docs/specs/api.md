@@ -12,6 +12,10 @@
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
+| GET | `/api/v1/auth/session` | 会话引导：返回认证状态并下发/刷新 CSRF 令牌 |
+| POST | `/api/v1/auth/login` | 管理员登录 |
+| POST | `/api/v1/auth/logout` | 管理员登出 |
+| PUT | `/api/v1/auth/password` | 修改管理员密码 |
 | GET | `/api/v1/monitors` | 查询监控项 |
 | POST | `/api/v1/monitors` | 创建监控项 |
 | GET | `/api/v1/monitors/{id}` | 查询监控详情 |
@@ -27,6 +31,15 @@
 | GET | `/actuator/metrics/{name}` | 按名查询运行指标 |
 
 路径可随实现调整，但必须维护一致的 API 文档和测试。
+
+## 认证与访问边界
+
+- 公开访问：`GET /api/v1/auth/session`、`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/heartbeats/{token}`、`GET /actuator/health` 及其健康分组。
+- 其余 `/api/v1/**` 与 `/actuator/metrics` 要求有效会话且具备 `ADMIN` 角色。
+- 未认证请求返回 401 `UNAUTHORIZED`，不得重定向到 HTML 登录页。
+- 登录、登出、改密与所有非 GET 管理请求必须携带 `X-XSRF-TOKEN`；缺失或不匹配返回 403 `CSRF_INVALID`。心跳上报不使用 Cookie 认证，豁免 CSRF。
+- 登录失败按用户名与远端地址限流；超限返回 429 `RATE_LIMITED` 并带 `Retry-After`。
+- 会话 Cookie、空闲/绝对期限与改密后会话失效规则见 [`auth.md`](auth.md)。
 
 Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（取值 1–10，默认 3/2）；请求中缺失时使用默认值。
 
@@ -56,7 +69,7 @@ Monitor 的请求与响应包含 `failureThreshold` 与 `recoveryThreshold`（�
 `GET /api/v1/incidents` 支持 `status`（`OPEN` / `RESOLVED`）与 `monitor_id` 过滤，按 `started_at` 倒序；非法 `status` 返回 400 和 `VALIDATION_ERROR`。`GET /api/v1/incidents/{id}` 返回 `monitorId`、`monitorName`、`startedAt`、`resolvedAt`、`status`、`failureType`、`summary`，并内嵌最近 5 条投递记录（渠道、事件类型、状态、尝试次数、最后尝试时间、发送时间、错误摘要）；不存在时返回 404 和 `INCIDENT_NOT_FOUND`。`PENDING` 重试态的投递保留最近一次失败摘要；`SENT` 清空错误摘要；终态 `FAILED` 保留摘要。
 
 ## 安全约束
-- 管理接口必须受认证和授权保护；Phase 4B 前仅允许回环地址访问，具体门槛见 [`../quality/deployment.md`](../quality/deployment.md) 与 [ADR-0003](../adr/0003-defer-admin-auth.md)。
+- 管理接口必须受认证和授权保护；认证不可关闭，边界与错误契约见 [`auth.md`](auth.md)。公网发布门槛见 [`../quality/deployment.md`](../quality/deployment.md)。
 - 心跳令牌独立于管理凭证；上报接口仅通过令牌识别监控项。
 - 不在响应或日志中暴露秘密。
 - `/actuator/health` 只返回必要的健康信息。

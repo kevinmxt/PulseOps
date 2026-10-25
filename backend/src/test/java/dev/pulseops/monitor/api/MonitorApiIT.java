@@ -24,11 +24,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static dev.pulseops.support.AuthenticatedApiRequests.delete;
+import static dev.pulseops.support.AuthenticatedApiRequests.get;
+import static dev.pulseops.support.AuthenticatedApiRequests.patch;
+import static dev.pulseops.support.AuthenticatedApiRequests.post;
+import static dev.pulseops.support.AuthenticatedApiRequests.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;

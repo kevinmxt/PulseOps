@@ -1,5 +1,10 @@
 package dev.pulseops.monitor.api;
 
+import dev.pulseops.auth.InvalidCredentialsException;
+import dev.pulseops.auth.InvalidCurrentPasswordException;
+import dev.pulseops.auth.InvalidNewPasswordException;
+import dev.pulseops.auth.LoginRateLimitedException;
+import dev.pulseops.common.ApiErrorResponse;
 import dev.pulseops.common.InvalidQueryException;
 import dev.pulseops.common.TraceIdFilter;
 import dev.pulseops.heartbeat.HeartbeatNotFoundException;
@@ -69,10 +74,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HeartbeatRateLimitedException.class)
     public ResponseEntity<ApiErrorResponse> handleRateLimited(HeartbeatRateLimitedException ex,
                                                               HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header("Retry-After", Long.toString(ex.getRetryAfterSeconds()))
-                .body(new ApiErrorResponse("RATE_LIMITED", ex.getMessage(),
-                        TraceIdFilter.currentTraceId(request)));
+        return rateLimited(ex.getRetryAfterSeconds(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(HeartbeatPayloadTooLargeException.class)
@@ -85,6 +87,30 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleHttpsRequired(HttpsRequiredException ex,
                                                                 HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "HTTPS_REQUIRED", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex,
+                                                                     HttpServletRequest request) {
+        return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCurrentPassword(InvalidCurrentPasswordException ex,
+                                                                         HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidNewPasswordException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidNewPassword(InvalidNewPasswordException ex,
+                                                                     HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(LoginRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> handleLoginRateLimited(LoginRateLimitedException ex,
+                                                                  HttpServletRequest request) {
+        return rateLimited(ex.getRetryAfterSeconds(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(InvalidQueryException.class)
@@ -138,6 +164,14 @@ public class ApiExceptionHandler {
         log.error("Unexpected error while handling request, traceId={}",
                 TraceIdFilter.currentTraceId(request), ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "unexpected error", request);
+    }
+
+    private static ResponseEntity<ApiErrorResponse> rateLimited(long retryAfterSeconds, String message,
+                                                                HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(retryAfterSeconds))
+                .body(new ApiErrorResponse("RATE_LIMITED", message,
+                        TraceIdFilter.currentTraceId(request)));
     }
 
     private static ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message,
