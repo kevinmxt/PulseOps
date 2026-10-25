@@ -10,6 +10,7 @@ import {
 } from '../api/client'
 import type { Monitor } from '../api/types'
 import { createAppRouter } from '../router'
+import { authenticateForTest } from '../test/auth'
 import MonitorEditView from './MonitorEditView.vue'
 
 vi.mock('../api/client', async () => {
@@ -99,6 +100,7 @@ async function mountEdit(id = '4') {
 
 describe('MonitorEditView', () => {
   beforeEach(() => {
+    authenticateForTest()
     getMonitorMock.mockReset()
     updateMonitorMock.mockReset()
     rotateHeartbeatTokenMock.mockReset()

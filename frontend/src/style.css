@@ -105,10 +105,51 @@ a:hover {
   border-bottom-color: var(--accent);
 }
 
+.app-user {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+}
+
 .app-main {
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px;
+}
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 40px;
+}
+
+.auth-panel {
+  width: min(420px, 100%);
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.auth-form > .button-primary {
+  justify-content: center;
+}
+
+.notice {
+  padding: 10px 12px;
+  margin-top: 12px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid #b9dced;
+  border-radius: 6px;
 }
 
 .page-header {
@@ -370,6 +411,7 @@ textarea {
 
 .form-field input[type='text'],
 .form-field input[type='number'],
+.form-field input[type='password'],
 .form-field select {
   padding: 6px 8px;
   background: #ffffff;

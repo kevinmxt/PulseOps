@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, createMonitor } from '../api/client'
 import type { Monitor } from '../api/types'
 import { createAppRouter } from '../router'
+import { authenticateForTest } from '../test/auth'
 import MonitorCreateView from './MonitorCreateView.vue'
 
 vi.mock('../api/client', async () => {
@@ -46,6 +47,7 @@ function buttonByText(wrapper: ReturnType<typeof mount>, text: string) {
 
 describe('MonitorCreateView', () => {
   beforeEach(() => {
+    authenticateForTest()
     createMonitorMock.mockReset()
   })
 

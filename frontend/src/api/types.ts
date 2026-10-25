@@ -97,6 +97,23 @@ export interface HeartbeatTokenResponse {
   heartbeatToken: string
 }
 
+export interface SessionInfo {
+  authenticated: boolean
+  username: string | null
+  role: string | null
+  csrfToken: string
+}
+
+export interface LoginResponse {
+  username: string
+  role: string
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface IncidentQuery {
   status?: IncidentStatus
   monitorId?: number
