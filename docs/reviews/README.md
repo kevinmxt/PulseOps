@@ -74,3 +74,19 @@ Phase 3 已完成，可以进入 Phase 4A（最小可用 UI）。代码整体质
 - 本次审阅环境的 Node.js 版本不符合 `frontend/.nvmrc`，依赖安装未在时限内完成；本报告不声称本机重新跑通前端测试或构建。
 - Phase 1、Phase 2、Phase 3 的历史审阅结论及原有索引均保留。
 
+
+# PulseOps Phase 4B 审阅资料
+
+## 阅读顺序
+
+1. [`phase4b-review.md`](phase4b-review.md)：认证、限流、数据清理、备份恢复的代码审阅结论与验证边界。
+2. [`phase4b-roadmap-notes.md`](phase4b-roadmap-notes.md)：进入 Phase 5（VPS 部署）的建议顺序。
+3. [`phase4b-remediation.md`](phase4b-remediation.md)：登录限流加固与 Phase 5 运维验收清单。
+
+## 审阅范围与结论
+
+- 审阅对象：本次上传的 `PulseOps-master (4).zip` 源码快照。
+- Phase 4B 按 `docs/quality/phase4b-acceptance.md` 中记录的 CI 与开发者本机验收证据判定完成；本次静态审查未发现需要否定阶段完成的明显高危问题。
+- 建议在公网开放前加固登录限流的并发配额与容量溢出行为；在目标 Linux VPS 上复核脚本执行权限、TLS/代理边界、备份权限和恢复失败清理路径。
+- 本次环境没有 Docker，Node.js 版本也不符合项目要求；Maven Wrapper 下载因网络不可用失败。因此本次没有独立重跑后端集成测试、前端测试/构建或恢复演练。详情见 `phase4b-review.md`。
+- **历史报告保留：** Phase 1、2、3、4A 的原有报告与以上内容均保留；本次只新增 Phase 4B 三份报告，并在此 README 末尾追加本节。
