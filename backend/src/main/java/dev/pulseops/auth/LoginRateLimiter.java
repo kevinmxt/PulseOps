@@ -1,5 +1,6 @@
 package dev.pulseops.auth;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -15,14 +16,20 @@ public class LoginRateLimiter {
     static final int MAX_ATTEMPTS = 5;
     static final Duration WINDOW = Duration.ofMinutes(15);
     static final int MAX_TRACKED_KEYS = 10_000;
+    private static final Duration RECLAIM_INTERVAL = Duration.ofSeconds(1);
 
     private final Clock clock;
+    private final int maxTrackedKeys;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+    private final Object admissionLock = new Object();
     private final AtomicReference<Instant> lastCleanup = new AtomicReference<>(Instant.EPOCH);
+    private final AtomicReference<Instant> lastReclaim = new AtomicReference<>(Instant.EPOCH);
     private final AtomicLong lastGeneration = new AtomicLong();
 
-    public LoginRateLimiter(Clock clock) {
+    public LoginRateLimiter(Clock clock,
+                            @Value("${pulseops.auth.rate-limit.max-keys:10000}") int maxTrackedKeys) {
         this.clock = clock;
+        this.maxTrackedKeys = maxTrackedKeys;
     }
 
     public static String keyFor(String rawUsername, String remoteAddress) {
@@ -40,20 +47,33 @@ public class LoginRateLimiter {
 
     public Attempt beginAttempt(String key) {
         Instant now = clock.instant();
-        ensureCapacity(key, now);
-        Window window = windows.compute(key, (ignored, current) -> {
-            Window active = current;
-            if (active == null || !now.isBefore(active.startedAt().plus(WINDOW))) {
-                active = new Window(lastGeneration.incrementAndGet(), now, 0, 0);
-            }
-            if (active.usedSlots() >= MAX_ATTEMPTS) {
-                throw new LoginRateLimitedException(retryAfterSeconds(now, active.startedAt()));
-            }
-            return new Window(active.generation(), active.startedAt(), active.failures(),
-                    active.inFlight() + 1);
-        });
+        Window window = admitAttempt(key, now);
         cleanupExpired(now);
         return new Attempt(key, window.generation());
+    }
+
+    private Window admitAttempt(String key, Instant now) {
+        synchronized (admissionLock) {
+            if (!windows.containsKey(key)) {
+                if (windows.size() >= maxTrackedKeys) {
+                    reclaimExpired(now);
+                }
+                if (windows.size() >= maxTrackedKeys) {
+                    throw new LoginRateLimitedException(WINDOW.toSeconds(), true);
+                }
+            }
+            return windows.compute(key, (ignored, current) -> {
+                Window active = current;
+                if (active == null || !now.isBefore(active.startedAt().plus(WINDOW))) {
+                    active = new Window(lastGeneration.incrementAndGet(), now, 0, 0);
+                }
+                if (active.usedSlots() >= MAX_ATTEMPTS) {
+                    throw new LoginRateLimitedException(retryAfterSeconds(now, active.startedAt()));
+                }
+                return new Window(active.generation(), active.startedAt(), active.failures(),
+                        active.inFlight() + 1);
+            });
+        }
     }
 
     public void recordFailure(Attempt attempt) {
@@ -75,14 +95,8 @@ public class LoginRateLimiter {
         windows.remove(attempt.key);
     }
 
-    private void ensureCapacity(String key, Instant now) {
-        if (windows.containsKey(key) || windows.size() < MAX_TRACKED_KEYS) {
-            return;
-        }
-        purgeExpired(now);
-        if (windows.size() >= MAX_TRACKED_KEYS) {
-            windows.keySet().stream().findFirst().ifPresent(windows::remove);
-        }
+    public int trackedKeys() {
+        return windows.size();
     }
 
     private void cleanupExpired(Instant now) {
@@ -93,8 +107,21 @@ public class LoginRateLimiter {
         purgeExpired(now);
     }
 
+    private void reclaimExpired(Instant now) {
+        Instant last = lastReclaim.get();
+        if (Duration.between(last, now).compareTo(RECLAIM_INTERVAL) < 0
+                || !lastReclaim.compareAndSet(last, now)) {
+            return;
+        }
+        purgeExpired(now);
+    }
+
     private void purgeExpired(Instant now) {
-        windows.entrySet().removeIf(entry -> !now.isBefore(entry.getValue().startedAt().plus(WINDOW)));
+        windows.forEach((key, window) -> {
+            if (!now.isBefore(window.startedAt().plus(WINDOW))) {
+                windows.remove(key, window);
+            }
+        });
     }
 
     private static long retryAfterSeconds(Instant now, Instant windowStart) {

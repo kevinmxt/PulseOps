@@ -39,6 +39,8 @@ pulseops:
     max-batches-per-tick: 50
   auth:
     cookie-secure: ${PULSEOPS_AUTH_COOKIE_SECURE:false}
+    rate-limit:
+      max-keys: ${PULSEOPS_AUTH_RATE_LIMIT_MAX_KEYS:10000}
     bootstrap-username: ${PULSEOPS_AUTH_BOOTSTRAP_USERNAME:}
     bootstrap-password-hash: ${PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH:}
 

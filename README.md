@@ -96,6 +96,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `PULSEOPS_AUTH_BOOTSTRAP_USERNAME` | 空 | 首次启动创建管理员的用户名；仅当 `app_user` 为空时生效 |
 | `PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH` | 空 | 首次启动管理员的 `{bcrypt}` 哈希；必须与用户名同时配置 |
 | `PULSEOPS_AUTH_COOKIE_SECURE` | `false` | 会话与 CSRF Cookie 的 `Secure` 属性；非回环监听时必须为 `true` |
+| `PULSEOPS_AUTH_RATE_LIMIT_MAX_KEYS` | `10000` | 登录限流内存中跟踪的最大键数量；达到上限时拒绝新键，详见 [`docs/specs/auth.md`](docs/specs/auth.md) |
 | `PULSEOPS_TELEGRAM_BOT_TOKEN` | 空（通知关闭） | Telegram Bot Token；必须与 Chat ID 同时配置 |
 | `PULSEOPS_TELEGRAM_CHAT_ID` | 空（通知关闭） | Telegram Chat ID |
 | `PULSEOPS_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API 基地址，仅用于测试或代理 |
