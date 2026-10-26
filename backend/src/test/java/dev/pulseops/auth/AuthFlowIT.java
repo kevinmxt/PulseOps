@@ -349,7 +349,7 @@ class AuthFlowIT {
         String username = "limited-" + UUID.randomUUID();
         Csrf csrf = bootstrapCsrf();
 
-        for (int attempt = 0; attempt < LoginRateLimiter.MAX_FAILURES; attempt++) {
+        for (int attempt = 0; attempt < LoginRateLimiter.MAX_ATTEMPTS; attempt++) {
             loginExpectingInvalidCredentials(username, "wrong-password-123", csrf);
         }
 

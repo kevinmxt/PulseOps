@@ -93,42 +93,49 @@ public class AuthController {
         String username = body == null ? null : body.username();
         String password = body == null ? null : body.password();
         String key = LoginRateLimiter.keyFor(username, request.getRemoteAddr());
+        LoginRateLimiter.Attempt attempt;
         try {
-            rateLimiter.checkAllowed(key);
+            attempt = rateLimiter.beginAttempt(key);
         } catch (LoginRateLimitedException ex) {
             log.warn("Admin login rate limited, remoteAddress={}, traceId={}",
                     request.getRemoteAddr(), TraceIdFilter.currentTraceId(request));
             throw ex;
         }
 
-        if (username == null || password == null) {
-            rateLimiter.recordFailure(key);
-            logLoginFailure(request);
-            throw new InvalidCredentialsException();
-        }
-
-        Authentication authentication;
+        boolean authenticated = false;
         try {
-            authentication = authenticationManager.authenticate(
-                    UsernamePasswordAuthenticationToken.unauthenticated(username, password));
-        } catch (AuthenticationException ex) {
-            rateLimiter.recordFailure(key);
-            logLoginFailure(request);
-            throw new InvalidCredentialsException();
-        }
+            if (username == null || password == null) {
+                logLoginFailure(request);
+                throw new InvalidCredentialsException();
+            }
 
-        rateLimiter.clear(key);
-        rotateSession(request);
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        HttpSession session = request.getSession(true);
-        session.setAttribute(AbsoluteSessionTimeoutFilter.SESSION_CREATED_AT_ATTRIBUTE, clock.instant());
-        sessionRegistry.register(authentication.getName(), session);
-        securityContextRepository.saveContext(context, request, response);
-        log.info("Admin login succeeded, remoteAddress={}, traceId={}",
-                request.getRemoteAddr(), TraceIdFilter.currentTraceId(request));
-        return new LoginResponse(authentication.getName(), roleOf(authentication));
+            Authentication authentication;
+            try {
+                authentication = authenticationManager.authenticate(
+                        UsernamePasswordAuthenticationToken.unauthenticated(username, password));
+            } catch (AuthenticationException ex) {
+                logLoginFailure(request);
+                throw new InvalidCredentialsException();
+            }
+
+            rateLimiter.recordSuccess(attempt);
+            authenticated = true;
+            rotateSession(request);
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            SecurityContextHolder.setContext(context);
+            HttpSession session = request.getSession(true);
+            session.setAttribute(AbsoluteSessionTimeoutFilter.SESSION_CREATED_AT_ATTRIBUTE, clock.instant());
+            sessionRegistry.register(authentication.getName(), session);
+            securityContextRepository.saveContext(context, request, response);
+            log.info("Admin login succeeded, remoteAddress={}, traceId={}",
+                    request.getRemoteAddr(), TraceIdFilter.currentTraceId(request));
+            return new LoginResponse(authentication.getName(), roleOf(authentication));
+        } finally {
+            if (!authenticated) {
+                rateLimiter.recordFailure(attempt);
+            }
+        }
     }
 
     @PostMapping("/logout")
