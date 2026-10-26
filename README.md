@@ -2,7 +2,7 @@
 
 面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任务心跳监控平台。
 
-项目当前处于 **Phase 4A 已完成、下一阶段 Phase 4B：认证与数据维护**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)，Phase 4A 证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)。
+项目当前处于 **Phase 4B 已完成、下一阶段 Phase 5：VPS 部署**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)，Phase 4B 证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，Phase 4A 证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)。
 
 ## 目录结构
 
@@ -10,6 +10,7 @@
 backend/        Spring Boot 3.5（Java 21）后端
 frontend/       Vue 3 + TypeScript + Vite 前端
 docs/           产品、架构、规范与运维文档
+scripts/        数据库备份与恢复脚本
 compose.yaml    本地 PostgreSQL
 .env.example    本地环境变量占位示例
 ```
@@ -73,12 +74,13 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
 启动后端与前端后访问 `http://localhost:5173`。当前 UI 支持：
 
+- 登录、会话过期跳转、登出与管理员改密。
 - 监控项列表与状态、最近检查时间、Probe Latency。
 - HTTP 与 Heartbeat 监控项的创建、编辑、启用/禁用与删除。
 - 检查历史分页、活动 Incident、Incident 过滤与通知投递状态。
 - 心跳一次性令牌、上报命令、轮换与撤销。
 
-管理 API 默认只监听回环地址。Phase 4B-1 已建立账号与启动校验，但认证过滤器链与登录接口尚未启用；在 Phase 4B 完成前不得将 UI 或管理 API 暴露到公网。
+管理 API 默认只监听回环地址。认证始终启用，Phase 4B 已完成未认证 401/403、登录限流、会话与 CSRF 校验。公网发布仍需完成 Phase 5 的 TLS、代理与防火墙配置，详见 [`docs/quality/deployment.md`](docs/quality/deployment.md)。
 
 ## 配置
 
@@ -90,7 +92,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `DB_USERNAME` | `pulseops` | 数据库账号 |
 | `DB_PASSWORD` | `pulseops` | 数据库密码，非本地环境必须覆盖 |
 | `SERVER_PORT` | `8080` | HTTP 端口 |
-| `SERVER_ADDRESS` | `127.0.0.1` | 监听地址；Phase 4B 认证门槛完成前保持回环地址（见 [`docs/quality/deployment.md`](docs/quality/deployment.md)） |
+| `SERVER_ADDRESS` | `127.0.0.1` | 监听地址；公网发布前保持回环地址，Phase 5 由前置代理终止 TLS（见 [`docs/quality/deployment.md`](docs/quality/deployment.md)） |
 | `PULSEOPS_AUTH_BOOTSTRAP_USERNAME` | 空 | 首次启动创建管理员的用户名；仅当 `app_user` 为空时生效 |
 | `PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH` | 空 | 首次启动管理员的 `{bcrypt}` 哈希；必须与用户名同时配置 |
 | `PULSEOPS_AUTH_COOKIE_SECURE` | `false` | 会话与 CSRF Cookie 的 `Secure` 属性；非回环监听时必须为 `true` |
@@ -156,6 +158,15 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
 清理在独立 `cleanupTickScheduler` 上执行，单批使用独立短事务、批间暂停 50ms；`OPEN` Incident 永不按时间清理，已解决 Incident 的投递随外键级联删除。详见 [ADR-0009](docs/adr/0009-data-retention-policy.md)。
 
+### 备份与恢复
+
+```bash
+./scripts/backup.sh
+./scripts/restore.sh ./backups/pulseops-<timestamp>.dump pulseops_restore
+```
+
+脚本通过 `docker compose exec -T` 在容器内执行 `pg_dump`/`pg_restore`，宿主机无需安装 PostgreSQL 客户端。备份保留份数、覆盖保护、恢复演练要求与敏感数据提示见 [`docs/quality/deployment.md`](docs/quality/deployment.md)。
+
 ## 测试与构建
 
 ```bash
@@ -170,10 +181,11 @@ npm test         # Vitest 契约测试
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)，历史证据见 [`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)、[`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，历史证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)、[`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)、[`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 
-- 不要提交 `.env`、真实凭证或心跳令牌。
+- 不要提交 `.env`、真实凭证、心跳令牌或备份文件。
+- 备份包含密码哈希与心跳令牌摘要，必须限制文件访问权限并避免明文传输。
 - 本地 Compose 仅将 PostgreSQL 绑定到回环地址，不对外暴露。
 - 外部请求必须设置超时，用户可控 URL 必须遵守 SSRF 防护规范。

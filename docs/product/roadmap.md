@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；Phase 4B 进行中（4B-1 至 4B-6 已完成），剩余阶段验收与文档收口（4B-7）。
+Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；Phase 4B 已完成（证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)），下一阶段 Phase 5：VPS 部署。
 
 ## 阶段顺序
 
@@ -77,7 +77,7 @@ Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../
 - [x] 历史数据保留策略与分批清理任务
 - [x] 备份与恢复演练（证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)）
 
-完成条件：未授权访问被拒绝；清理任务遵守保留期限；备份可恢复。
+完成条件：未授权访问被拒绝；清理任务遵守保留期限；备份可恢复。完成证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)。
 
 ### Phase 5：VPS 部署
 前置条件：Phase 4B 已完成；公网认证硬性门槛见 [`quality/deployment.md`](../quality/deployment.md)。

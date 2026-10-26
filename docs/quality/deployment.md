@@ -21,7 +21,7 @@
 - 任何管理入口（管理 API 或管理 UI）公网可达前，必须完成 Phase 4B 的单用户认证与授权。
 - 反向代理（如 Caddy）只负责 TLS 终止、入口暴露和必要的网络控制，不视为唯一授权层；应用必须自行拒绝未认证请求并返回 401/403。
 - 认证未启用时，不得将后端或管理入口公开监听或暴露到公网。
-- Phase 4B 的验收项与完成状态见 [`../product/roadmap.md`](../product/roadmap.md)。
+- Phase 4B（单用户认证、历史清理、备份恢复）已完成，验收证据见 [`phase4b-acceptance.md`](phase4b-acceptance.md)。完成 4B 不等于可以公网发布：Phase 5 的 TLS、反向代理、防火墙与日志轮转完成前，必须保持回环监听。
 
 ## 配置管理
 - 真实凭证通过环境变量或安全部署配置提供。
@@ -29,6 +29,21 @@
 - 生产环境配置不得提交到 Git。
 - 容器尽量以非 root 用户运行。
 - 配置合理的重启策略、资源限制和日志轮转。
+
+### 管理员密码重置
+
+忘记密码时使用已记录的哈希生成命令（见 [`../specs/auth.md`](../specs/auth.md#密码哈希生成)），然后直接更新账号：
+
+```bash
+docker compose exec -T postgres sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+UPDATE app_user
+SET password_hash = '{bcrypt}$2y$12$REPLACE_WITH_GENERATED_HASH',
+    updated_at = now()
+WHERE username = 'admin';
+SQL
+```
+
+替换哈希与用户名后执行，并重启应用使内存中的现有会话失效。不要通过重新设置引导变量覆盖已有账号。
 
 ## 备份与恢复
 

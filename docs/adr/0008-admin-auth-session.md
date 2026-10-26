@@ -13,7 +13,7 @@ Phase 1–3 的管理 API 不做认证，默认只监听回环地址（ADR-0003�
 - 账号存入 `app_user` 表，用户名唯一，密码使用 BCrypt（`{bcrypt}` 前缀，成本因子 12）；角色字段暂只允许 `ADMIN`。
 - 首次启动在用户表为空时使用环境变量引导管理员账号；认证始终启用，不提供关闭开关。
 - 浏览器通过 `HttpOnly`、`SameSite=Lax` 的 `PULSEOPS_SESSION` Cookie 携带会话；空闲 30 分钟、绝对 12 小时。
-- 使用双提交 Cookie 实现 CSRF：`XSRF-TOKEN` + `X-XSRF-TOKEN`，覆盖登录、登出、改密与所有写请求。
+- 使用双提交 Cookie 实现 CSRF：`XSRF-TOKEN` + `X-XSRF-TOKEN`，覆盖登录、登出、改密与所有管理写请求；心跳上报不使用 Cookie 认证，豁免 CSRF。
 - 登录失败按用户名与远端地址限流；启动时校验凭据、哈希格式与非回环监听下的 Secure Cookie。
 - 改密成功后使该用户的全部会话失效。
 
