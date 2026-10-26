@@ -31,11 +31,48 @@
 - 配置合理的重启策略、资源限制和日志轮转。
 
 ## 备份与恢复
-- 定期备份 PostgreSQL。
-- 明确备份保留期限和存放位置。
-- 保护备份文件中的敏感数据。
-- 必须执行至少一次恢复演练。
-- 仅确认备份文件存在，不代表恢复能力已验证。
+
+备份包含 `app_user.password_hash` 与 `heartbeat_credential.token_hash` 等敏感数据，文件必须只允许部署账号读取。
+
+### 执行备份
+
+宿主机不需要安装 PostgreSQL 客户端。`scripts/backup.sh` 通过 `docker compose exec -T` 在 PostgreSQL 容器内执行 `pg_dump`：
+
+```bash
+./scripts/backup.sh
+```
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `BACKUP_DIR` | `./backups` | 备份目录；不存在时创建并设为仅属主可访问 |
+| `BACKUP_RETENTION_COUNT` | `7` | 每个数据库保留的份数，超出后删除最旧文件 |
+| `COMPOSE_SERVICE` | `postgres` | 运行 PostgreSQL 的 Compose 服务名 |
+
+- 文件名为 `<数据库名>-<UTC 时间戳>.dump`，格式为 `pg_dump -Fc`。
+- 备份先写入临时文件，`pg_restore --list` 自检通过后才改名为正式文件；失败不会留下半成品。
+- 脚本使用 `umask 077` 并显式 `chmod 600`，在 Linux 上备份目录与文件仅属主可访问。
+- 备份文件包含密码哈希与心跳令牌摘要，不得提交到 Git 或通过聊天工具传输；`.gitignore` 已忽略 `backups/`。
+- 定时调度、异地存放与加密属于 Phase 5 部署任务。
+
+### 恢复与演练
+
+```bash
+./scripts/restore.sh ./backups/pulseops-<timestamp>.dump pulseops_restore
+```
+
+- 目标库不存在时创建并恢复；已存在时脚本拒绝执行，不会静默覆盖。
+- 确需覆盖时使用 `--force`，脚本会先执行 `DROP DATABASE ... WITH (FORCE)`，该操作不可撤销。
+- 脚本始终拒绝恢复进 Compose 服务的源库（`POSTGRES_DB`）以及 `postgres`/`template0`/`template1` 维护库。
+- 恢复使用 `pg_restore --no-owner --no-privileges --exit-on-error`；任一对象失败即停止并删除未完成的恢复库，不留下半成品。
+- 推荐恢复到独立库并在其上启动应用验证，不要直接覆盖生产库。
+
+恢复演练至少覆盖：
+
+1. 备份生成并通过 `pg_restore --list` 自检。
+2. 恢复到独立库后，Flyway 历史版本与校验和、核心表行数与抽样数据均与源库一致。
+3. 用恢复库启动应用，健康检查与管理 API 可用。
+
+演练证据记录在 [`phase4b-acceptance.md`](phase4b-acceptance.md)。仅确认备份文件存在，不代表恢复能力已验证。
 
 ## 发布与回滚
 发布前：
