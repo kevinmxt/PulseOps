@@ -6,18 +6,20 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class LoginRateLimiter {
 
-    static final int MAX_FAILURES = 5;
+    static final int MAX_ATTEMPTS = 5;
     static final Duration WINDOW = Duration.ofMinutes(15);
     static final int MAX_TRACKED_KEYS = 10_000;
 
     private final Clock clock;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final AtomicReference<Instant> lastCleanup = new AtomicReference<>(Instant.EPOCH);
+    private final AtomicLong lastGeneration = new AtomicLong();
 
     public LoginRateLimiter(Clock clock) {
         this.clock = clock;
@@ -36,39 +38,51 @@ public class LoginRateLimiter {
         return username + "|" + (remoteAddress == null ? "" : remoteAddress);
     }
 
-    public void checkAllowed(String key) {
+    public Attempt beginAttempt(String key) {
         Instant now = clock.instant();
-        Window window = windows.get(key);
-        if (window == null) {
-            return;
-        }
-        if (!now.isBefore(window.startedAt().plus(WINDOW))) {
-            windows.remove(key, window);
-            return;
-        }
-        if (window.failures() >= MAX_FAILURES) {
-            throw new LoginRateLimitedException(retryAfterSeconds(now, window.startedAt()));
-        }
+        ensureCapacity(key, now);
+        Window window = windows.compute(key, (ignored, current) -> {
+            Window active = current;
+            if (active == null || !now.isBefore(active.startedAt().plus(WINDOW))) {
+                active = new Window(lastGeneration.incrementAndGet(), now, 0, 0);
+            }
+            if (active.usedSlots() >= MAX_ATTEMPTS) {
+                throw new LoginRateLimitedException(retryAfterSeconds(now, active.startedAt()));
+            }
+            return new Window(active.generation(), active.startedAt(), active.failures(),
+                    active.inFlight() + 1);
+        });
+        cleanupExpired(now);
+        return new Attempt(key, window.generation());
     }
 
-    public void recordFailure(String key) {
+    public void recordFailure(Attempt attempt) {
         Instant now = clock.instant();
-        if (!windows.containsKey(key) && windows.size() >= MAX_TRACKED_KEYS) {
-            purgeExpired(now);
-            if (windows.size() >= MAX_TRACKED_KEYS) {
-                windows.keySet().stream().findFirst().ifPresent(windows::remove);
+        windows.compute(attempt.key, (ignored, current) -> {
+            if (current == null || current.generation() != attempt.generation) {
+                return current;
             }
-        }
-
-        windows.compute(key, (ignored, current) ->
-                current == null || !now.isBefore(current.startedAt().plus(WINDOW))
-                        ? new Window(now, 1)
-                        : new Window(current.startedAt(), current.failures() + 1));
+            if (!now.isBefore(current.startedAt().plus(WINDOW))) {
+                return null;
+            }
+            return new Window(current.generation(), current.startedAt(), current.failures() + 1,
+                    Math.max(0, current.inFlight() - 1));
+        });
         cleanupExpired(now);
     }
 
-    public void clear(String key) {
-        windows.remove(key);
+    public void recordSuccess(Attempt attempt) {
+        windows.remove(attempt.key);
+    }
+
+    private void ensureCapacity(String key, Instant now) {
+        if (windows.containsKey(key) || windows.size() < MAX_TRACKED_KEYS) {
+            return;
+        }
+        purgeExpired(now);
+        if (windows.size() >= MAX_TRACKED_KEYS) {
+            windows.keySet().stream().findFirst().ifPresent(windows::remove);
+        }
     }
 
     private void cleanupExpired(Instant now) {
@@ -88,6 +102,21 @@ public class LoginRateLimiter {
         return Math.max(1, Math.min(WINDOW.toSeconds(), (millis + 999) / 1000));
     }
 
-    private record Window(Instant startedAt, int failures) {
+    public static final class Attempt {
+
+        private final String key;
+        private final long generation;
+
+        private Attempt(String key, long generation) {
+            this.key = key;
+            this.generation = generation;
+        }
+    }
+
+    private record Window(long generation, Instant startedAt, int failures, int inFlight) {
+
+        int usedSlots() {
+            return failures + inFlight;
+        }
     }
 }
