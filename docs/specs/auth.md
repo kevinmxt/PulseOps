@@ -18,7 +18,7 @@
 - `app_user` 为空时，启动阶段使用 `PULSEOPS_AUTH_BOOTSTRAP_USERNAME` 与 `PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH` 创建唯一管理员。
 - 用户表为空且任一变量缺失、或哈希格式非法时，应用拒绝启动。
 - 用户表非空时忽略引导变量；若仍提供变量，记录 WARN 而不覆盖已有账号。
-- 引导变量只用于首次建号。忘记密码时按运维文档生成新哈希并更新对应账号，不通过重新启动覆盖。
+- 引导变量只用于首次建号。忘记密码时按 [`../quality/deployment.md`](../quality/deployment.md) 的管理员密码重置流程生成新哈希、更新对应账号并重启应用，不通过重新启动覆盖。
 
 ## 登录与会话
 
