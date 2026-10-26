@@ -24,7 +24,7 @@ class LoginRateLimiterTest {
     private static final Instant START = Instant.parse("2026-10-25T08:00:00Z");
 
     private final MutableClock clock = new MutableClock(START);
-    private final LoginRateLimiter limiter = new LoginRateLimiter(clock);
+    private final LoginRateLimiter limiter = new LoginRateLimiter(clock, LoginRateLimiter.MAX_TRACKED_KEYS);
 
     @Test
     void rejectsTheSixthAttemptWithinTheWindow() {
@@ -189,6 +189,94 @@ class LoginRateLimiterTest {
                 .doesNotThrowAnyException();
         assertThatCode(() -> limiter.beginAttempt(LoginRateLimiter.keyFor("other", "127.0.0.1")))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void reclaimsExpiredWindowsBeforeRejectingNewKeysAtCapacity() {
+        LoginRateLimiter limited = new LoginRateLimiter(clock, 2);
+        limited.beginAttempt("first");
+        limited.beginAttempt("second");
+        assertThat(limited.trackedKeys()).isEqualTo(2);
+
+        clock.advance(LoginRateLimiter.WINDOW);
+
+        assertThatCode(() -> limited.beginAttempt("third")).doesNotThrowAnyException();
+        assertThat(limited.trackedKeys()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsNewKeysWithCapacitySignalWhenAllWindowsAreActive() {
+        LoginRateLimiter limited = new LoginRateLimiter(clock, 2);
+        limited.beginAttempt("first");
+        limited.beginAttempt("second");
+
+        assertThatThrownBy(() -> limited.beginAttempt("third"))
+                .isInstanceOf(LoginRateLimitedException.class)
+                .satisfies(ex -> {
+                    LoginRateLimitedException rateLimited = (LoginRateLimitedException) ex;
+                    assertThat(rateLimited.isCapacityExhausted()).isTrue();
+                    assertThat(rateLimited.getRetryAfterSeconds())
+                            .isEqualTo(LoginRateLimiter.WINDOW.toSeconds());
+                });
+        assertThat(limited.trackedKeys()).isEqualTo(2);
+    }
+
+    @Test
+    void existingKeysKeepTheirQuotaWhenCapacityIsFull() {
+        LoginRateLimiter limited = new LoginRateLimiter(clock, 1);
+        for (int attempt = 0; attempt < LoginRateLimiter.MAX_ATTEMPTS; attempt++) {
+            limited.recordFailure(limited.beginAttempt("first"));
+        }
+
+        assertThatThrownBy(() -> limited.beginAttempt("first"))
+                .isInstanceOf(LoginRateLimitedException.class)
+                .satisfies(ex -> assertThat(((LoginRateLimitedException) ex).isCapacityExhausted())
+                        .isFalse());
+        assertThatThrownBy(() -> limited.beginAttempt("second"))
+                .isInstanceOf(LoginRateLimitedException.class)
+                .satisfies(ex -> assertThat(((LoginRateLimitedException) ex).isCapacityExhausted())
+                        .isTrue());
+        assertThat(limited.trackedKeys()).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentNewKeysCannotExceedCapacity() throws Exception {
+        int capacity = 5;
+        int threads = 32;
+        LoginRateLimiter limited = new LoginRateLimiter(clock, capacity);
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> results = new ArrayList<>();
+        try {
+            for (int i = 0; i < threads; i++) {
+                String key = "new-key-" + i;
+                results.add(executor.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    try {
+                        limited.beginAttempt(key);
+                        return true;
+                    } catch (LoginRateLimitedException ex) {
+                        assertThat(ex.isCapacityExhausted()).isTrue();
+                        return false;
+                    }
+                }));
+            }
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            int admitted = 0;
+            for (Future<Boolean> result : results) {
+                if (result.get(5, TimeUnit.SECONDS)) {
+                    admitted++;
+                }
+            }
+            assertThat(admitted).isEqualTo(capacity);
+            assertThat(limited.trackedKeys()).isEqualTo(capacity);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test

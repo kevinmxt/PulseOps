@@ -97,8 +97,15 @@ public class AuthController {
         try {
             attempt = rateLimiter.beginAttempt(key);
         } catch (LoginRateLimitedException ex) {
-            log.warn("Admin login rate limited, remoteAddress={}, traceId={}",
-                    request.getRemoteAddr(), TraceIdFilter.currentTraceId(request));
+            if (ex.isCapacityExhausted()) {
+                log.warn("Admin login rate limiter capacity exhausted, remoteAddress={}, "
+                                + "trackedKeys={}, traceId={}",
+                        request.getRemoteAddr(), rateLimiter.trackedKeys(),
+                        TraceIdFilter.currentTraceId(request));
+            } else {
+                log.warn("Admin login rate limited, remoteAddress={}, traceId={}",
+                        request.getRemoteAddr(), TraceIdFilter.currentTraceId(request));
+            }
             throw ex;
         }
 
