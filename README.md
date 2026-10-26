@@ -140,6 +140,22 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 
 失败重试：网络错误、5xx 与 429 最多尝试 3 次，退避 1 分钟与 5 分钟；非 429 的 4xx 直接进入 `FAILED`。重启后只续发 `PENDING` 投递，已发送的不会重发。
 
+### 历史数据清理
+
+以下配置项位于 `pulseops.cleanup` 前缀下：
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `pulseops.cleanup.enabled` | `true` | 是否执行清理 |
+| `pulseops.cleanup.scheduling-enabled` | `true` | 是否启用自动调度；集成测试中关闭并手动调用 `CleanupService.tick()` |
+| `pulseops.cleanup.tick-interval` | `1h` | 清理 tick 的 fixedDelay（1m–24h） |
+| `pulseops.cleanup.check-result-retention-days` | `30` | CheckResult 保留天数（1–3650） |
+| `pulseops.cleanup.resolved-incident-retention-days` | `90` | 已解决 Incident 保留天数（1–3650） |
+| `pulseops.cleanup.batch-size` | `1000` | 单批删除行数（1–10000） |
+| `pulseops.cleanup.max-batches-per-tick` | `50` | 单 tick 最多批次，由两类数据共享（1–1000） |
+
+清理在独立 `cleanupTickScheduler` 上执行，单批使用独立短事务、批间暂停 50ms；`OPEN` Incident 永不按时间清理，已解决 Incident 的投递随外键级联删除。详见 [ADR-0009](docs/adr/0009-data-retention-policy.md)。
+
 ## 测试与构建
 
 ```bash

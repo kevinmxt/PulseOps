@@ -46,9 +46,9 @@
 - 不引入 Redis、Kafka 或 Kubernetes，除非有明确需求并经确认。
 
 ## 调度与线程模型
-- 探测、通知投递和心跳超时扫描各自使用独立的单线程 `ThreadPoolTaskScheduler`，线程前缀分别为 `probe-tick-`、`notification-tick-`、`heartbeat-tick-`。
+- 探测、通知投递、心跳超时扫描与历史数据清理各自使用独立的单线程 `ThreadPoolTaskScheduler`，线程前缀分别为 `probe-tick-`、`notification-tick-`、`heartbeat-tick-`、`cleanup-tick-`。
 - 每个 `@Scheduled` 方法必须显式声明 `scheduler`；测试校验调度器非空且全局唯一。
-- HTTP 探测使用独立的有界线程池执行网络请求；通知发送与心跳扫描在各自的 tick 线程中串行执行，三类 tick 互不阻塞。
+- HTTP 探测使用独立的有界线程池执行网络请求；通知发送、心跳扫描与历史清理在各自的 tick 线程中串行执行，各类 tick 互不阻塞。
 - 心跳扫描逐项在独立事务内锁定 Monitor，再重新校验 `next_check_at` 后处理。
 - 单实例调度约束不变；多实例前仍需数据库租约或原子认领机制。
 

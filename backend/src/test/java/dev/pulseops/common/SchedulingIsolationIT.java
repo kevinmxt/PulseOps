@@ -27,9 +27,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         "pulseops.probe.scheduling-enabled=true",
         "pulseops.notification.scheduling-enabled=true",
         "pulseops.heartbeat.scheduling-enabled=true",
+        "pulseops.cleanup.scheduling-enabled=true",
         "pulseops.probe.tick-interval=1h",
         "pulseops.notification.dispatch-interval=1h",
-        "pulseops.heartbeat.tick-interval=1h"
+        "pulseops.heartbeat.tick-interval=1h",
+        "pulseops.cleanup.tick-interval=1h"
 })
 @Testcontainers
 class SchedulingIsolationIT {
@@ -67,7 +69,7 @@ class SchedulingIsolationIT {
         List<String> schedulers = declarations.stream().map(Scheduled::scheduler).toList();
         assertThat(schedulers).doesNotHaveDuplicates();
         assertThat(schedulers).contains("probeTickScheduler", "notificationTickScheduler",
-                "heartbeatTickScheduler");
+                "heartbeatTickScheduler", "cleanupTickScheduler");
         for (String schedulerName : schedulers) {
             ThreadPoolTaskScheduler scheduler = context.getBean(schedulerName, ThreadPoolTaskScheduler.class);
             assertThat(scheduler.getPoolSize()).isEqualTo(1);
