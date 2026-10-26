@@ -105,6 +105,16 @@ Phase 2 的计数与阈值在探测写回事务内更新；探测语义配置变
 
 用于追踪通知发送和重试，不得把通知失败与故障状态回滚绑定。投递采用 at-least-once 语义，见 [ADR-0005](../adr/0005-transactional-outbox-notifications.md)。
 
+## 历史数据保留与清理
+
+- `CheckResult` 按 `started_at` 保留 30 天（`pulseops.cleanup.check-result-retention-days`，1–3650 天）。
+- 已解决 Incident 按 `resolved_at` 保留 90 天（`pulseops.cleanup.resolved-incident-retention-days`，1–3650 天），其 NotificationDelivery 由外键级联删除。
+- `OPEN` Incident 及其投递永不按时间清理；Monitor 删除仍由既有级联处理。
+- 到期仍滞留的 `PENDING` 投递随 Incident 删除并记录数量；通知投递器遇到已不存在的投递行按无操作处理。
+- 独立 `cleanup-tick-` 单线程调度器默认每小时执行（`tick-interval`，1m–24h）；`enabled` 控制是否执行清理，`scheduling-enabled` 控制是否注册调度。单批 1000 行（`batch-size`，1–10000），每批独立短事务，批间暂停 50ms，单 tick 最多 50 批（`max-batches-per-tick`，1–1000）；该批次预算由 CheckResult 与已解决 Incident 共享，同一 tick 依次处理两类数据。
+- 索引：`check_result(started_at)` 与 `incident(resolved_at) WHERE status = 'RESOLVED'`。
+- 删除数量以 INFO 日志与 `cleanup.removed` 计数器（`type` 标签）记录。决策背景见 [ADR-0009](../adr/0009-data-retention-policy.md)。
+
 ## 数据库规范
 - 所有正式结构变更使用 Flyway。
 - 明确外键、唯一约束、非空约束和索引。

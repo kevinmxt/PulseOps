@@ -5,8 +5,10 @@ import dev.pulseops.incident.IncidentRepository;
 import dev.pulseops.monitor.MonitorEntity;
 import dev.pulseops.monitor.MonitorRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -60,6 +62,12 @@ public class NotificationDispatcher {
     }
 
     private void dispatch(NotificationDeliveryEntity delivery) {
+        if (!deliveryRepository.existsById(delivery.getId())) {
+            log.debug("Notification delivery no longer exists, skipping, deliveryId={}",
+                    delivery.getId());
+            return;
+        }
+
         delivery.recordAttempt(clock.instant());
         try {
             IncidentEntity incident = incidentRepository.findById(delivery.getIncidentId())
@@ -74,7 +82,24 @@ public class NotificationDispatcher {
         } catch (RuntimeException failure) {
             handleFailure(delivery, failure.getMessage(), false);
         }
-        deliveryRepository.save(delivery);
+        saveOutcomeIfDeliveryStillExists(delivery);
+    }
+
+    private void saveOutcomeIfDeliveryStillExists(NotificationDeliveryEntity delivery) {
+        try {
+            if (!deliveryRepository.existsById(delivery.getId())) {
+                log.debug("Notification delivery was deleted during dispatch, skipping update, "
+                        + "deliveryId={}", delivery.getId());
+                return;
+            }
+            deliveryRepository.save(delivery);
+        } catch (DataIntegrityViolationException | EntityNotFoundException failure) {
+            if (deliveryRepository.existsById(delivery.getId())) {
+                throw failure;
+            }
+            log.debug("Notification delivery disappeared during dispatch, skipping update, "
+                    + "deliveryId={}", delivery.getId());
+        }
     }
 
     private void handleFailure(NotificationDeliveryEntity delivery, String message,

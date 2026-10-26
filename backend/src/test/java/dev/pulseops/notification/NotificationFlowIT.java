@@ -30,6 +30,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -296,6 +297,43 @@ class NotificationFlowIT {
         List<NotificationDeliveryEntity> deliveries = notificationDeliveryRepository.findAll();
         assertThat(deliveries).hasSize(1);
         assertThat(deliveries.getFirst().getEventType()).isEqualTo(NotificationEventType.INCIDENT_OPENED);
+    }
+
+    @Test
+    void toleratesDeletedDeliveryAndContinuesWithRemainingDueDeliveries() throws Exception {
+        MonitorEntity monitor = createMonitor();
+        failing = true;
+        probe(monitor);
+        probe(monitor);
+        probe(monitor);
+        seedDueDeliveries(monitor, 1);
+        List<NotificationDeliveryEntity> due = notificationDeliveryRepository
+                .findByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAscIdAsc(
+                        NotificationDeliveryStatus.PENDING, CLOCK.instant(), PageRequest.of(0, 10));
+        assertThat(due).hasSize(2);
+        NotificationDeliveryEntity deleted = due.getFirst();
+        NotificationDeliveryEntity survivor = due.getLast();
+        telegramBlocks = true;
+
+        ExecutorService dispatcherThread = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> dispatch = dispatcherThread.submit(notificationDispatcher::dispatchDue);
+            assertThat(telegramRequestStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            incidentRepository.deleteById(deleted.getIncidentId());
+            assertThat(notificationDeliveryRepository.findById(deleted.getId())).isEmpty();
+
+            releaseTelegramRequest.countDown();
+            dispatch.get(10, TimeUnit.SECONDS);
+        } finally {
+            releaseTelegramRequest.countDown();
+            dispatcherThread.shutdownNow();
+        }
+
+        List<NotificationDeliveryEntity> remaining = notificationDeliveryRepository.findAll();
+        assertThat(remaining).hasSize(1);
+        assertThat(remaining.getFirst().getId()).isEqualTo(survivor.getId());
+        assertThat(remaining.getFirst().getStatus()).isEqualTo(NotificationDeliveryStatus.SENT);
     }
 
     @Test
