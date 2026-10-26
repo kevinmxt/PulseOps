@@ -2,7 +2,7 @@
 
 面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任务心跳监控平台。
 
-项目当前处于 **Phase 4B 已完成、下一阶段 Phase 5：VPS 部署**。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)，Phase 4B 证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，Phase 4A 证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)。
+项目当前处于 **Phase 4B 已完成、下一阶段 Phase 5A：部署准备（本地可验证）**，Phase 5B（VPS 上线验收）待 VPS 与域名就绪。产品范围、架构约束和验收标准见 [`docs/index.md`](docs/index.md)，Phase 4B 证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，Phase 4A 证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)。
 
 ## 目录结构
 

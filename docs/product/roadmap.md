@@ -1,7 +1,7 @@
 # PulseOps 路线图
 
 ## 当前阶段
-Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；Phase 4B 已完成（证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)），下一阶段 Phase 5：VPS 部署。
+Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../quality/phase4a-acceptance.md)）；Phase 4B 已完成（证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)），下一阶段 Phase 5A：部署准备（本地可验证），Phase 5B 待 VPS 与域名就绪。
 
 ## 阶段顺序
 
@@ -79,16 +79,31 @@ Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../
 
 完成条件：未授权访问被拒绝；清理任务遵守保留期限；备份可恢复。完成证据见 [`quality/phase4b-acceptance.md`](../quality/phase4b-acceptance.md)。
 
-### Phase 5：VPS 部署
+### Phase 5A：部署准备（本地可验证）
 前置条件：Phase 4B 已完成；公网认证硬性门槛见 [`quality/deployment.md`](../quality/deployment.md)。
 
-- [ ] 生产 Compose 配置
-- [ ] Caddy / HTTPS
-- [ ] 防火墙与 SSH 安全
-- [ ] 日志轮转
-- [ ] 数据库备份
-- [ ] 外部健康检查
-- [ ] 升级与回滚文档
+目标：完成部署配置、脚本和文档，并在本地或本地虚拟机验证，尽量缩短拿到 VPS 后的上线时间。
+
+- [ ] 生产 Compose 配置（非 root、重启策略、资源限制、healthcheck、端口仅绑回环）
+- [ ] Caddy 配置与本地 HTTPS 验证（internal CA 或本地域名）
+- [ ] 日志轮转（应用、Caddy、Docker 日志驱动）
+- [ ] 数据库备份的定时调度、加密与异地存放
+- [ ] 升级与回滚文档及脚本（本地 dry-run）
+- [ ] 外部健康检查端点与告警接收预案
+- [ ] 防火墙与 SSH 加固脚本（本地虚拟机演练，VPS 上执行属 5B）
+
+完成条件：生产 Compose 可在本地或虚拟机启动并通过健康检查；Caddy 配置校验通过且本地 HTTPS 可访问；备份调度、加密与恢复演练通过；回滚 dry-run 通过。
+
+非目标：真实域名证书签发、公网可达性验收、连续运行验收（均属 Phase 5B）。
+
+### Phase 5B：VPS 上线验收
+前置条件：Phase 5A 完成；已购置 VPS 并准备域名。
+
+- [ ] 在 VPS 上执行防火墙与 SSH 加固
+- [ ] 真实域名 HTTPS 签发与公网访问
+- [ ] 接入外部健康检查并验证探测与告警
+- [ ] 公网部署验收：重启恢复、备份恢复、端口暴露检查
+- [ ] 连续运行 7 天且无未解决的严重故障
 
 完成条件：HTTPS 可访问、数据库不暴露公网、重启可恢复、备份可恢复、连续运行 7 天且无未解决的严重故障。
 
