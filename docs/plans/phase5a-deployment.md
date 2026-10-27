@@ -159,7 +159,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 - 5A：`SITE_ADDRESS=pulseops.test`、`TLS_ISSUER=internal`；Windows 宿主 hosts 指向 VM IP，导入 Caddy 根 CA 到用户证书库，浏览器访问 `https://pulseops.test`。
 - 5B：改 `SITE_ADDRESS=<真实域名>`、`TLS_ISSUER=<ACME 邮箱>`，Caddyfile 不变。
 - HTTP 80 自动跳转 HTTPS。
-- Caddy 根证书从 `pulseops-caddy-data` 卷导出：`/data/caddy/pki/authorities/local/root.crt`。
+- Caddy 根证书从 `pulseops-caddy-data` 卷导出：`/data/caddy/pki/authorities/local/root.crt`，由 `scripts/export-caddy-root-ca.sh` 封装。
 - Caddy 仅开启错误日志（默认 stderr）；不开启访问日志，避免每分钟健康检查刷屏。
 
 ## 代理信任与真实客户端 IP
@@ -289,6 +289,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 | `backend/Dockerfile`、`backend/.dockerignore` | 后端镜像 |
 | `frontend/Dockerfile`、`frontend/.dockerignore` | 前端 + Caddy 镜像 |
 | `scripts/provision-vm.sh` | VM/VPS 共用基础配置 |
+| `scripts/export-caddy-root-ca.sh` | 本地 HTTPS 根证书导出 |
 | `scripts/deploy.sh`、`scripts/rollback.sh` | 部署与回滚 |
 | `scripts/backup.sh`（扩展） | 加密、上传、ping |
 | `scripts/harden-vps.sh` | 防火墙与 SSH 加固 |

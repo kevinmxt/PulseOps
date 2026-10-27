@@ -26,3 +26,6 @@ Thumbs.db
 
 # Local database backups
 backups/
+
+# Exported local Caddy root CA
+/caddy-root.crt

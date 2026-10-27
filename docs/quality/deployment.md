@@ -23,6 +23,50 @@
 - 认证未启用时，不得将后端或管理入口公开监听或暴露到公网。
 - Phase 4B（单用户认证、历史清理、备份恢复）已完成，验收证据见 [`phase4b-acceptance.md`](phase4b-acceptance.md)。完成 4B 不等于可以公网发布：Phase 5 的 TLS、反向代理、防火墙与日志轮转完成前，必须保持回环监听。
 
+## 本地 HTTPS 演练（Phase 5A）
+
+仅用于本地 VM 验证，不代表公网证书流程。证书导出与 HTTPS 服务证据在 VM 内取得；宿主信任库导入与浏览器验证在 Windows 侧完成。
+
+1. 启动生产栈，确认 `SITE_ADDRESS=pulseops.test`、`TLS_ISSUER=internal`。
+2. 在 VM 内导出 Caddy 内部根证书（公开文件，私钥始终留在 `pulseops-caddy-data` 卷内）：
+
+   ```bash
+   COMPOSE_ENV_FILE=/etc/pulseops/pulseops.env \
+     ./scripts/export-caddy-root-ca.sh /home/ubuntu/caddy-root.crt
+   ```
+
+   脚本会把相对输出路径解析到仓库根目录；建议使用绝对路径。
+
+3. 把证书复制到 Windows。例如证书位于 VM 家目录时：
+
+   ```powershell
+   multipass transfer pulseops-vps:/home/ubuntu/caddy-root.crt .
+   ```
+
+4. 把 VM IP 写入 Windows hosts，见 [`../plans/phase5a-vm-setup.md`](../plans/phase5a-vm-setup.md) 步骤 5。
+5. 在当前用户信任库导入（无需管理员）：
+
+   ```powershell
+   certutil -user -addstore Root .\caddy-root.crt
+   certutil -user -store Root | findstr /i "Caddy"
+   ```
+
+   Chrome/Edge 使用 Windows 证书库；Firefox 需启用 `security.enterprise_roots.enabled` 或单独导入。重复导入前先用第 7 步移除旧 Caddy 根证书，避免信任库残留多个同名根。
+
+6. 访问 `https://pulseops.test`，确认 HTTP 80 返回 308 跳转到 HTTPS、登录与页面操作正常，且会话 Cookie 带 `Secure`。
+7. 不再需要时移除（CN 中的年份随生成时间变化，以第一条命令输出为准）：
+
+   ```powershell
+   certutil -user -store Root | findstr /i "Caddy"
+   certutil -user -delstore Root "Caddy Local Authority - 2026 ECC Root"
+   ```
+
+8. 切换到真实域名只改环境变量，不修改 Caddyfile：
+   - `SITE_ADDRESS=<真实域名>`
+   - `TLS_ISSUER=<ACME 邮箱>`
+
+   确保 DNS 指向目标机器、80/443 可达；Caddy 会自动申请并续期证书。
+
 ## 配置管理
 - 真实凭证通过环境变量或安全部署配置提供。
 - `.env.example` 只能包含占位值。
