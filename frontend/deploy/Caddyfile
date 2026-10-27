@@ -1,0 +1,21 @@
+{
+	http_port 8080
+	https_port 8443
+}
+
+{$SITE_ADDRESS:pulseops.test} {
+	tls {$TLS_ISSUER:internal}
+
+	encode zstd gzip
+
+	@backend path /api/* /actuator/health /actuator/health/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
