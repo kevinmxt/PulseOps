@@ -137,6 +137,20 @@ multipass shell pulseops-vps
 
 以下命令在 VM 内执行。
 
+也可以从仓库直接运行幂等脚本完成 4.1 的时区与基础包安装、4.2 的 Docker 安装、4.3 的镜像配置，并输出组件版本；不包含主机名、`hello-world` 拉取验证与防火墙/SSH 加固：
+
+```powershell
+multipass transfer scripts/provision-vm.sh pulseops-vps:/tmp/provision-vm.sh
+multipass exec pulseops-vps -- sudo bash /tmp/provision-vm.sh
+```
+
+- 脚本默认使用 `https://docker.m.daocloud.io` 作为 Docker registry mirror；可用 `DOCKER_REGISTRY_MIRROR` 覆盖。
+- Docker apt 源默认使用 `download.docker.com`，不可达时自动回退到阿里云镜像；可用 `DOCKER_APT_BASE` 指定。
+- 默认把 `SUDO_USER`（否则 `ubuntu`）加入 `docker` 组；可用 `DOCKER_GROUP_USER` 覆盖。
+- 脚本会安装 `jq` 用于合并 `/etc/docker/daemon.json`，不会覆盖文件中的其他键；4.3 的手动示例会整体覆盖该文件。
+
+以下手动命令保留用于排查与离线环境。
+
 ### 4.1 时区、主机名与基础包
 
 ```bash
