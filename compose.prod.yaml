@@ -1,0 +1,89 @@
+name: pulseops
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pulseops}
+      POSTGRES_USER: ${POSTGRES_USER:-pulseops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - data
+
+  backend:
+    image: pulseops-backend:${IMAGE_TAG:-local}
+    build:
+      context: backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pulseops}
+      DB_USERNAME: ${POSTGRES_USER:-pulseops}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SERVER_ADDRESS: 0.0.0.0
+      PULSEOPS_AUTH_COOKIE_SECURE: "true"
+      HEARTBEAT_REQUIRE_HTTPS: "true"
+      PULSEOPS_AUTH_BOOTSTRAP_USERNAME: ${PULSEOPS_AUTH_BOOTSTRAP_USERNAME:-}
+      PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH: ${PULSEOPS_AUTH_BOOTSTRAP_PASSWORD_HASH:-}
+      PULSEOPS_AUTH_RATE_LIMIT_MAX_KEYS: ${PULSEOPS_AUTH_RATE_LIMIT_MAX_KEYS:-10000}
+      PULSEOPS_TELEGRAM_BOT_TOKEN: ${PULSEOPS_TELEGRAM_BOT_TOKEN:-}
+      PULSEOPS_TELEGRAM_CHAT_ID: ${PULSEOPS_TELEGRAM_CHAT_ID:-}
+    networks:
+      - edge
+      - data
+
+  caddy:
+    image: pulseops-caddy:${IMAGE_TAG:-local}
+    build:
+      context: frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-pulseops.test}
+      TLS_ISSUER: ${TLS_ISSUER:-internal}
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - edge
+
+volumes:
+  postgres-data:
+    name: pulseops-postgres-data
+  caddy-data:
+    name: pulseops-caddy-data
+  caddy-config:
+    name: pulseops-caddy-config
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  data:
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
