@@ -103,7 +103,7 @@ Windows 浏览器 / 外部监控
 
 ### 前端镜像
 
-- 多阶段构建：`node:24-alpine`（对齐 `.nvmrc` 24.15.0）执行 `npm ci && npm run build` → `caddy:2-alpine` 复制 `dist/` 与 `deploy/Caddyfile`。
+- 多阶段构建：`node:24.15.0-alpine`（对齐 `.nvmrc`）执行 `npm ci && npm run build` → `caddy:2-alpine` 复制 `dist/` 与 `frontend/deploy/Caddyfile`。
 - 构建上下文 `frontend/`，新增 `.dockerignore` 排除 `node_modules/`、`dist/`。
 - 镜像 tag 统一为 `${IMAGE_TAG}`（Git short SHA）。
 
@@ -127,27 +127,33 @@ Windows 浏览器 / 外部监控
 
 ## TLS 与本地验证
 
-Caddyfile 放在 `deploy/Caddyfile`，使用环境变量：
+Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内），使用环境变量：
 
 ```caddyfile
 {
-    http_port 8080
-    https_port 8443
+	http_port 8080
+	https_port 8443
 }
 
 {$SITE_ADDRESS:pulseops.test} {
-    tls {$TLS_ISSUER:internal}
+	tls {$TLS_ISSUER:internal}
 
-    encode zstd gzip
+	encode zstd gzip
 
-    @backend path /api/* /actuator/health /actuator/health/*
-    reverse_proxy @backend backend:8080
+	@backend path /api/* /actuator/health /actuator/health/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
 
-    root * /srv
-    try_files {path} /index.html
-    file_server
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }
 ```
+
+使用互斥的 `handle` 块，避免 `try_files` 的 SPA 重写先于 `reverse_proxy` 生效，导致 `/api/*` 被回退到 `index.html`。
 
 - 5A：`SITE_ADDRESS=pulseops.test`、`TLS_ISSUER=internal`；Windows 宿主 hosts 指向 VM IP，导入 Caddy 根 CA 到用户证书库，浏览器访问 `https://pulseops.test`。
 - 5B：改 `SITE_ADDRESS=<真实域名>`、`TLS_ISSUER=<ACME 邮箱>`，Caddyfile 不变。
@@ -265,7 +271,7 @@ Caddyfile 放在 `deploy/Caddyfile`，使用环境变量：
 ## CI 校验
 
 - 新增部署产物 job，带路径过滤：
-  - PR 触发条件：`compose.prod.yaml`、`deploy/**`、`backend/Dockerfile`、`frontend/Dockerfile`、`scripts/**`、`.github/workflows/**`。
+  - PR 触发条件：`compose.prod.yaml`、`deploy/**`、`frontend/deploy/**`、`backend/Dockerfile`、`frontend/Dockerfile`、`scripts/**`、`.github/workflows/**`。
   - 步骤：`docker compose -f compose.prod.yaml config -q`；`caddy validate`；不构建镜像。
   - master：在上述基础上构建 backend 与 frontend 镜像（`push: false`），使用构建缓存。
 - 不在 CI 中推送镜像、不引入镜像仓库凭证。
@@ -276,7 +282,7 @@ Caddyfile 放在 `deploy/Caddyfile`，使用环境变量：
 | 文件 | 用途 |
 |---|---|
 | `compose.prod.yaml` | 生产三服务编排 |
-| `deploy/Caddyfile` | 静态托管与反代 |
+| `frontend/deploy/Caddyfile` | 静态托管与反代 |
 | `deploy/env.prod.example` | 生产环境变量占位 |
 | `deploy/systemd/pulseops-backup.service` / `.timer` / `-failure.service` | 备份调度与失败告警模板 |
 | `backend/Dockerfile`、`backend/.dockerignore` | 后端镜像 |
