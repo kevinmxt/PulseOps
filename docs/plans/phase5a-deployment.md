@@ -42,10 +42,10 @@ Phase 5A 的目标是完成部署配置、脚本和文档，并在本地 Linux �
 | Compose 组织 | 新增 `compose.prod.yaml`；保留 `compose.yaml` 仅用于本地开发；脚本遵守 `COMPOSE_FILE` |
 | 本地演练环境 | Multipass + Hyper-V，Ubuntu 24.04 LTS，2 vCPU / 4 GB / 40 GB；数据目录放 `G:\work\VM\Multipass`；5A 验收与 5B 预演共用 |
 | 本地 HTTPS | 单一 Caddyfile，用 `SITE_ADDRESS` 与 `TLS_ISSUER` 环境变量区分 5A/5B；5A 使用 `pulseops.test` + `tls internal` |
-| Caddy 端口 | 容器内监听 8080/8443，宿主发布 80/443；Caddy 以非 root 运行 |
+| Caddy 端口 | 容器内监听 8080/8443，宿主发布 80/443；镜像内创建 uid 10002 用户并以非 root 运行 |
 | backend 加固 | 非 root、只读根文件系统 + tmpfs `/tmp`、`cap_drop: [ALL]`；不发布宿主端口 |
 | postgres 加固 | 使用官方镜像默认 `postgres` 用户与数据卷；不使用 `cap_drop: ALL`（会破坏入口脚本降权） |
-| 资源限制 | backend 768 MB / postgres 1 GB / Caddy 128 MB；固定 CPU 与 pids 上限 |
+| 资源限制 | backend 768 MB / 1 CPU / 512 pids；postgres 1 GB / 1 CPU / 256 pids；Caddy 128 MB / 0.5 CPU / 128 pids |
 | 网络 | 固定子网：`edge` 172.28.0.0/24（Caddy + backend），`data` 172.28.1.0/24（backend + postgres） |
 | 可信代理 | 后端启用 `server.forward-headers-strategy=native`，Tomcat `remoteip.internal-proxies` 只信任 `edge` 子网 |
 | 日志 | 全部输出 stdout/stderr；Docker `json-file` 驱动 `max-size=10m`、`max-file=5`；Caddy 只开错误日志 |
@@ -111,11 +111,11 @@ Windows 浏览器 / 外部监控
 
 - 项目名固定 `pulseops`；三个服务：`postgres`、`backend`、`caddy`。
 - `restart: unless-stopped`；`depends_on` 使用健康条件：postgres → backend → caddy。
-- 资源限制：`mem_limit` / `cpus` / `pids_limit`；postgres 1 GB，backend 768 MB，Caddy 128 MB。
-- 安全选项：backend `read_only` + `tmpfs: /tmp` + `cap_drop: [ALL]`；Caddy 非 root；所有服务 `security_opt: no-new-privileges:true`。
+- 资源限制：`mem_limit` / `cpus` / `pids_limit`；postgres 1 GB / 1 CPU / 256 pids，backend 768 MB / 1 CPU / 512 pids，Caddy 128 MB / 0.5 CPU / 128 pids。
+- 安全选项：backend `read_only` + `tmpfs: /tmp` + `cap_drop: [ALL]`；Caddy 镜像内创建 uid 10002 用户，复制前端产物时设置属主，并 chown `/data`、`/config`；所有服务 `security_opt: no-new-privileges:true`。Caddy 健康检查使用 `nc -z` 探测 8080，避免管理 API 日志噪声；后端就绪由 `depends_on` 保证。
 - 日志：`logging.options.max-size=10m`、`max-file=5`。
 - 卷：`pulseops-postgres-data`、`pulseops-caddy-data`、`pulseops-caddy-config`。
-- Caddy 若因官方镜像用户与卷权限冲突无法直接以非 root 启动，允许用固定 UID 的初始化步骤修正卷属主；最终必须满足"非 root 运行"。
+- Caddy 以镜像内固定 UID 运行；从非加固版本升级时，若已有 `caddy-data`/`caddy-config` 卷为 root 属主，需一次性 `chown -R 10002:10002` 或删除重建卷。全新部署由镜像内属主初始化。
 
 ### 配置与密钥
 
@@ -133,6 +133,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 {
 	http_port 8080
 	https_port 8443
+	skip_install_trust
 }
 
 {$SITE_ADDRESS:pulseops.test} {
@@ -153,7 +154,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 }
 ```
 
-使用互斥的 `handle` 块，避免 `try_files` 的 SPA 重写先于 `reverse_proxy` 生效，导致 `/api/*` 被回退到 `index.html`。
+使用互斥的 `handle` 块，避免 `try_files` 的 SPA 重写先于 `reverse_proxy` 生效，导致 `/api/*` 被回退到 `index.html`。`skip_install_trust` 避免非 root 运行时不必要地向容器信任库安装内部 CA；根证书仍从卷导出供宿主导入。
 
 - 5A：`SITE_ADDRESS=pulseops.test`、`TLS_ISSUER=internal`；Windows 宿主 hosts 指向 VM IP，导入 Caddy 根 CA 到用户证书库，浏览器访问 `https://pulseops.test`。
 - 5B：改 `SITE_ADDRESS=<真实域名>`、`TLS_ISSUER=<ACME 邮箱>`，Caddyfile 不变。
@@ -342,7 +343,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 
 ## 风险与限制
 
-- 官方 Caddy/Postgres 镜像的非 root 与卷权限需要在 VM 内实测；若冲突，需增加初始化步骤，但不得放弃非 root 目标。
+- Caddy 非 root 与新建卷属主已在本地实测；从非加固版本升级时需处理已有 root 属主卷。
 - Docker 发布端口会绕过 ufw；本项目只发布 80/443，验收必须从外部确认其他端口不可达。
 - Multipass VM 的 IP 由 DHCP 分配，重启可能变化；hosts 记录与浏览器验证需重跑。
 - 5A 的 Caddy 根 CA 只用于本地信任，不代表公网证书流程已验证。
