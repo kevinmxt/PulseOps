@@ -9,7 +9,7 @@
 
 ## 工作流程
 
-1. 检查仓库、当前分支、未提交改动和相关实现。
+1. 检查仓库、当前分支、未提交改动和相关实现；执行 `git fetch origin master`，用 `gh pr list --head <当前分支> --state all` 确认分支没有已合并 PR，并比较 `origin/master..HEAD`。若分支已合并或落后，从最新 master 新建分支，不复用旧分支。
 2. 确认任务所属阶段、验收条件及需要加载的专题文档。
 3. 先给出简短实施计划；小型明确任务可直接执行。
 4. 完成最小的、可测试的改动。
@@ -18,6 +18,7 @@
 7. 更新受影响的文档与路线图状态。
 8. 汇报改动文件、实际运行的命令、测试结果、风险和遗留事项。
 9. 任务对应 GitHub issue 时，提交并推送当前分支，将完成报告作为评论写入 issue，然后关闭 issue。
+10. PR 合并使用仓库实际策略（当前为 squash）：`gh pr merge <n> --squash --delete-branch`；随后 `git pull --ff-only origin master` 确认已回到并同步 master。squash 合并后原提交不是 master 祖先，`git log master..HEAD` 会误显示未合并，不得复用已合并分支继续开发。
 
 ## 测试与评审节奏
 
