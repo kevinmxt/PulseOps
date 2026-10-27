@@ -1,9 +1,23 @@
 name: pulseops
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-security-opt: &default-security-opt
+  - "no-new-privileges:true"
+
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    security_opt: *default-security-opt
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pulseops}
       POSTGRES_USER: ${POSTGRES_USER:-pulseops}
@@ -25,6 +39,16 @@ services:
     build:
       context: backend
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 512
+    security_opt: *default-security-opt
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,6 +73,11 @@ services:
     build:
       context: frontend
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 128
+    security_opt: *default-security-opt
+    logging: *default-logging
     depends_on:
       backend:
         condition: service_healthy
@@ -61,8 +90,9 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
+    # Liveness only; backend readiness is enforced by depends_on.
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
       interval: 10s
       timeout: 3s
       retries: 5
