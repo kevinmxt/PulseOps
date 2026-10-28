@@ -4,3 +4,5 @@ mvnw text eol=lf
 *.cmd text eol=crlf
 Dockerfile text eol=lf
 Caddyfile text eol=lf
+deploy/env.prod.example text eol=lf
+deploy/systemd/* text eol=lf

@@ -164,6 +164,7 @@ SQL
    并在环境文件设置 `BACKUP_RCLONE_REMOTE=local`、`BACKUP_RCLONE_PATH=/var/backups/pulseops-offsite/pulseops/db`。模板中的 `BACKUP_RCLONE_PATH` 是占位符：5A 用上述绝对本地路径，5B 改为对象存储前缀（如 `pulseops/db`）。5A 可用本地 HTTP 端点模拟 Healthchecks 成功/失败 ping，5B 换成真实 URL。
    环境文件还必须包含 `COMPOSE_FILE=/opt/pulseops/compose.prod.yaml` 与 `COMPOSE_PROJECT_NAME=pulseops`，systemd 单元才能找到生产编排。
    备份服务默认以 root 运行，因此迁移与恢复操作需使用 sudo；密钥与配置仍保持 600。异地链路依赖 `age`、`rclone`、`jq`；`provision-vm.sh` 已安装前两者与 `jq`。
+   环境文件与 systemd 单元必须使用 LF 行尾；从 Windows 传输后可用 `sed -i 's/\r$//' /etc/pulseops/pulseops.env` 修正（仓库已固定这些文件为 LF）。
 
 2. 安装并启用 systemd 单元：
 
@@ -217,7 +218,7 @@ sudo ./scripts/restore.sh /tmp/backup.dump pulseops_restore
 2. 恢复到独立库后，Flyway 历史版本与校验和、核心表行数与抽样数据均与源库一致。
 3. 用恢复库启动应用，健康检查与管理 API 可用。
 
-演练证据记录在 [`phase4b-acceptance.md`](phase4b-acceptance.md)。仅确认备份文件存在，不代表恢复能力已验证。
+4B 本地演练证据见 [`phase4b-acceptance.md`](phase4b-acceptance.md)；5A 异地加密副本恢复证据见 [`phase5a-acceptance.md`](phase5a-acceptance.md)。仅确认备份文件存在，不代表恢复能力已验证。
 
 ## 发布与回滚
 发布前：
