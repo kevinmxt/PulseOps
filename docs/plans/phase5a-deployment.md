@@ -291,6 +291,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 | `scripts/provision-vm.sh` | VM/VPS 共用基础配置 |
 | `scripts/export-caddy-root-ca.sh` | 本地 HTTPS 根证书导出 |
 | `scripts/deploy.sh`、`scripts/rollback.sh` | 部署与回滚 |
+| `scripts/smoke-test.sh` | 部署、回滚与验收共用冒烟测试 |
 | `scripts/backup.sh`（扩展） | 加密、上传、ping |
 | `scripts/backup-failure.sh` | 失败时 ping Healthchecks `/fail` |
 | `scripts/harden-vps.sh` | 防火墙与 SSH 加固 |

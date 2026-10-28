@@ -29,3 +29,8 @@ backups/
 
 # Exported local Caddy root CA
 /caddy-root.crt
+
+# Deployment state
+/.deployed-tag
+/.previous-tag
+/.deployed-tags/
