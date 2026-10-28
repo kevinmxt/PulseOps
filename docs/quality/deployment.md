@@ -282,4 +282,39 @@ Flyway 只做前向迁移，镜像回滚不会撤销迁移。回滚脚本拒绝�
 恢复库切换 `DB_URL` 是不可逆操作；切换前保留原库与备份。
 
 ## 独立外部监控
-PulseOps 不应只依靠自己监控自己。应使用独立的外部服务检查 PulseOps 的健康端点，避免 VPS 宕机后告警系统同时失效。
+
+PulseOps 不应只依靠自己监控自己。VPS、数据库或 PulseOps 整体宕机时，告警链路不得经过 PulseOps。Phase 5A 完成选型与预案，不注册公网服务；Phase 5B 注册并验证。
+
+### 免费档对比（2026-10-28 核对）
+
+| 服务 | 免费额度与探测 | 免费告警渠道 | 结论 |
+|---|---|---|---|
+| UptimeRobot | 50 monitors，最小 5 分钟 | 邮件/推送；Telegram、Slack、Teams 属于付费集成 | 免费档不满足 Telegram 要求 |
+| Better Stack | 10 monitors/heartbeats，最小 3 分钟 | 邮件 + Slack；支持 Telegram 集成，但免费档是否包含需注册时确认 | 推荐可用性监控；Telegram 免费资格需复核 |
+| Healthchecks.io Hobbyist | 20 checks，每 check 100 log entries；被动 ping，period/grace 可配置（备份用 1 天 + 2 小时 grace） | 邮件、Telegram（@HealthchecksBot）、Slack 等 | 推荐备份死信检查 |
+
+官方参考：[UptimeRobot pricing](https://uptimerobot.com/pricing/)、[Better Stack pricing](https://betterstack.com/pricing)、[Healthchecks.io pricing](https://healthchecks.io/pricing/)、[Healthchecks Telegram 集成](https://healthchecks.io/integrations/telegram/)。价格、额度与免费档集成范围会变化，具体以注册页为准；5B 注册前必须复核。
+
+### 推荐方案
+
+- **可用性监控：Better Stack 免费档。** 使用 3 分钟 HTTPS 探测；告警先配置邮件 + Slack。若注册时确认 Telegram 属于免费档，则增加 Telegram；否则使用邮件/Slack 作为可用性告警，Telegram 仅用于备份死信。若必须让所有告警只走 Telegram 且不接受付费，免费方案无法同时满足，需要评估 UptimeRobot Solo 等付费档。
+- **备份死信：Healthchecks.io Hobbyist。** 备份成功后 ping 唯一 URL；超过 period + grace 未收到 ping 即告警。配置 Telegram（@HealthchecksBot）并保留邮件兜底；备份失败由 `OnFailure` 立即 ping `/fail`。
+- **Telegram 告警接收人：** 单管理员与 @HealthchecksBot 所在的专用群 `PulseOps Alerts`（仅管理员，Bot 只授予发消息权限）。备份死信固定通过该群告警；可用性服务若免费档支持 Telegram，也加入该群，否则可用性告警走邮件/Slack。外部服务使用自己的告警通道，不依赖 PulseOps 自己的 Bot Token；同时保留管理员邮箱作为兜底。不要在 Git 中保存 Bot Token、Chat ID 或 Healthchecks Ping URL。
+- **探测配置：**
+  - Better Stack：HTTPS GET `https://<真实域名>/actuator/health`，每 3 分钟，超时 10 秒，期望 200 且响应包含 `"status":"UP"`；开启证书校验；连续 2 次失败再告警；不发送认证头。
+  - Healthchecks.io：check 名称 `pulseops-backup`，period 1 天、grace 2 小时、时区 UTC；`HEALTHCHECKS_PING_URL` 写入 `/etc/pulseops/pulseops.env`；失败单元使用同 URL 的 `/fail` 端点。
+  - UptimeRobot 备选：5 分钟 HTTPS + keyword 探测，邮件/推送告警；Telegram 需要付费档。
+
+### PulseOps 自身宕机预案
+
+1. 健康端点 DOWN、数据库不可用或 VPS 整体离线时，由外部可用性服务通过其已启用的告警通道（Telegram 若免费档可用，否则邮件/Slack）发送；告警链路不经过 PulseOps。备份死信由 Healthchecks.io 通过 Telegram/邮件发送。
+2. 管理员通过 VPS 提供商控制台/快照或重启恢复；数据损坏时按本文档[备份与恢复](#备份与恢复)流程处理，再运行部署/回滚脚本并用 `smoke-test.sh` 验证。
+3. 备份未按时 ping 时由 Healthchecks.io 告警；若 VPS 离线导致备份未运行，该告警与可用性告警相互独立。
+4. 若 Telegram 不可用，使用管理员邮箱兜底；若邮件也不可达，使用 VPS 提供商状态页/控制台。5A 为单管理员，不引入值班轮换。
+5. 恢复后确认外部监控回到 UP，并在 Healthchecks.io 确认检查恢复。
+
+### 5A 边界
+
+- 5A 只验证 VM 内公开健康端点的可达性与响应内容，不注册外部服务；`pulseops.test` 使用内部 CA，外部监控不信任，不能作为公网探测目标。
+- 5B 使用真实域名、ACME 证书，注册 Better Stack、Healthchecks.io 与 Telegram，故意制造健康失败/备份失败验证告警，并记录证据。
+- 实际注册、探测定时与告警接收验证属于 Phase 5B。

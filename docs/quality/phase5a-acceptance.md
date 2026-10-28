@@ -1,6 +1,50 @@
 # Phase 5A 验收证据
 
-本文件记录 Phase 5A 部署准备的本地验收证据。本文档由 #87 创建并记录异地加密备份恢复演练；其余 5A 验收项在 #93 汇总。
+本文件记录 Phase 5A 部署准备的本地验收证据。本文档记录 #87 异地加密备份恢复演练与 #90 外部健康端点验证；其余 5A 验收项在 #93 汇总。
+
+## 外部健康端点验证（#90）
+
+### 环境
+
+| 项目 | 值 |
+|---|---|
+| 日期 | 2026-10-28（UTC） |
+| 探测源 | Windows 10 宿主（VM 外部） |
+| 目标 | VM `pulseops-vps`（172.21.51.253），生产栈 `pulseops`，三服务 healthy |
+| 站点 | `https://pulseops.test`（5A 内部 CA） |
+
+> 说明：外部可用性探测必须从 PulseOps 之外发起，因此本节证据刻意来自 Windows 宿主；其余 5A 验收命令在 VM 内执行。
+
+### 命令与结果
+
+```bash
+curl -ksS --resolve pulseops.test:443:172.21.51.253 https://pulseops.test/actuator/health
+# {"status":"UP"}
+
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}' \
+  --resolve pulseops.test:80:172.21.51.253 http://pulseops.test/
+# 308 https://pulseops.test/
+
+curl -ksS --resolve pulseops.test:443:172.21.51.253 \
+  -o /tmp/metrics.out -w '%{http_code} %{content_type}' \
+  https://pulseops.test/actuator/metrics
+# 200 text/html；Caddy 未反代 metrics，返回 SPA 入口
+```
+
+| 检查 | 结果 |
+|---|---|
+| 公开健康端点（宿主外部访问） | 200，响应体仅 `{"status":"UP"}` |
+| 响应字段 | 仅 `status`，无 `details`、`components`、数据库或版本信息 |
+| HTTP 80 | 308 跳转 `https://pulseops.test/` |
+| `/actuator/metrics` 经 Caddy | 200 HTML（SPA 回退），未暴露 actuator metrics |
+
+### 结论与边界
+
+- 公开健康端点可从 VM 外部访问，响应不泄露数据库、组件或版本细节，具备作为外部可用性探测目标的响应语义。
+- 本次使用 `-k` 与私有地址，只验证路径和响应内容，未验证证书链与公网路径；TLS/公网可达性属于 5B 真实域名验收，不能据此认定公网监控已可用。
+- 5A 使用内部 CA 与 `pulseops.test`，外部监控服务不信任该证书；不在 5A 注册公网探测。
+- 5B 使用真实域名与 ACME 证书后注册 Better Stack/Healthchecks.io，并配置 Telegram/邮件集成（若 Better Stack 免费档不含 Telegram，可用性告警走邮件/Slack 或付费档），验证探测与告警。
+- 外部服务选型、探测频率与告警预案见 [`deployment.md`](deployment.md#独立外部监控)。
 
 ## 异地加密备份恢复演练（#87）
 

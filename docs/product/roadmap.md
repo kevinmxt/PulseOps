@@ -89,7 +89,7 @@ Phase 4A 已完成（CI 与验收证据见 [`quality/phase4a-acceptance.md`](../
 - [ ] 日志轮转（应用、Caddy、Docker 日志驱动）
 - [ ] 数据库备份的定时调度、加密与异地存放
 - [ ] 升级与回滚文档及脚本（本地 dry-run）
-- [ ] 外部健康检查端点与告警接收预案
+- [x] 外部健康检查端点与告警接收预案（选型与预案见 [`deployment.md`](../quality/deployment.md#独立外部监控)；注册在 5B）
 - [ ] 防火墙与 SSH 加固脚本（本地虚拟机演练，VPS 上执行属 5B）
 
 完成条件：生产 Compose 可在本地或虚拟机启动并通过健康检查；Caddy 配置校验通过且本地 HTTPS 可访问；备份调度、加密与恢复演练通过；回滚 dry-run 通过。

@@ -221,6 +221,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 - 5A 输出选型对比与预案，不实际注册公网服务：
   - 可用性监控候选：UptimeRobot、Better Stack；关注免费档探测间隔与告警渠道。
   - 备份失效监控：Healthchecks.io 死信检查（与备份 ping 配套）。
+- 5A 选型对比、推荐服务与探测配置见 [`quality/deployment.md#独立外部监控`](../quality/deployment.md#独立外部监控)；实际注册与告警验证在 5B。
 - 告警接收沿用 Telegram；明确"PulseOps 自身宕机时告警链路不依赖 PulseOps"。
 - 5B 实际接入并验证探测与告警。
 
