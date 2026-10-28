@@ -30,7 +30,7 @@ Phase 5A 的目标是完成部署配置、脚本和文档，并在本地 Linux �
 - `scripts/backup.sh` 与 `scripts/restore.sh` 已通过 4B 演练；定时调度、加密、异地存放与失败告警尚未实现。
 - 登录限流只使用 `request.getRemoteAddr()`；引入反向代理后真实客户端 IP 尚未处理（4B 遗留）。
 - 本机为 Windows 10 Pro，Hyper-V 已启用；将用 Multipass 建 Ubuntu 24.04 VM（2 vCPU / 4 GB / 40 GB）作为 5A 与 5B 的预演环境。
-- CI 目前有后端 `verify` 与前端 `build/test` 两个 job，不校验部署产物。
+- CI 除后端 `verify` 与前端 `build/test` 外，已新增 `.github/workflows/deploy.yml`：部署相关 PR 校验 Compose/Caddy，master push 构建前后端镜像但不推送。
 
 ## 已确认决策
 
