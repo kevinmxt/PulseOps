@@ -272,10 +272,10 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 
 ## CI 校验
 
-- 新增部署产物 job，带路径过滤：
-  - PR 触发条件：`compose.prod.yaml`、`deploy/**`、`frontend/deploy/**`、`backend/Dockerfile`、`frontend/Dockerfile`、`scripts/**`、`.github/workflows/**`。
-  - 步骤：`docker compose -f compose.prod.yaml config -q`；`caddy validate`；不构建镜像。
-  - master：在上述基础上构建 backend 与 frontend 镜像（`push: false`），使用构建缓存。
+- 新增 `.github/workflows/deploy.yml`，带路径过滤：
+  - PR 触发条件：`compose.prod.yaml`、`deploy/**`、`frontend/deploy/**`、`backend/Dockerfile`、`backend/.dockerignore`、`frontend/Dockerfile`、`frontend/.dockerignore`、`scripts/**`、`.github/workflows/**`。
+  - 步骤：`docker compose -f compose.prod.yaml --env-file deploy/env.prod.example config -q`；`caddy validate`；PR 不构建镜像。
+  - master：每次 push 都运行校验并构建 backend 与 frontend 镜像（`push: false`，GHA layer cache）；路径不匹配的 PR 不触发该工作流。
 - 不在 CI 中推送镜像、不引入镜像仓库凭证。
 - 5A 完成证据引用 master 的 CI 运行链接。
 
@@ -296,6 +296,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 | `scripts/backup.sh`（扩展） | 加密、上传、ping |
 | `scripts/backup-failure.sh` | 失败时 ping Healthchecks `/fail` |
 | `scripts/harden-vps.sh` | 防火墙与 SSH 加固 |
+| `.github/workflows/deploy.yml` | 部署产物校验与 master 镜像构建 |
 | `docs/adr/0010-*.md` | 生产拓扑与可信代理边界 |
 | `docs/quality/phase5a-acceptance.md` | 验收证据 |
 | `docs/quality/deployment.md`、`docs/specs/auth.md`、`docs/index.md`、`README.md`、`docs/product/roadmap.md` | 规范与状态更新 |
