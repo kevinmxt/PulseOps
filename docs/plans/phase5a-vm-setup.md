@@ -281,6 +281,8 @@ docker ps
 
 重启后确认：systemd 正常、Docker 自动启动、hosts 记录仍指向正确 IP（必要时重跑步骤 5）。
 
+> 环境就绪后的部署、备份调度与回滚步骤见 [`phase5a-deploy-runbook.md`](phase5a-deploy-runbook.md)。
+
 ## 清理与卸载
 
 - 删除实例：`multipass delete pulseops-vps --purge`（会删除 G: 下的实例数据）。

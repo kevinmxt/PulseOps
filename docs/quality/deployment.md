@@ -140,6 +140,14 @@ SQL
 
 替换哈希与用户名后执行，并重启应用使内存中的现有会话失效。不要通过重新设置引导变量覆盖已有账号。
 
+## 镜像构建与构建上下文
+
+- backend、frontend 镜像在目标机本地构建（`docker compose -f compose.prod.yaml build`），构建上下文分别是 `backend/` 与 `frontend/`。
+- 向目标机传输源码时，打包排除规则必须**只匹配上下文根目录下的产物**（如 `backend/target`、`frontend/node_modules`、`frontend/dist`）。Windows 自带的 `tar.exe`（bsdtar）中 `*` 可跨 `/` 匹配，`--exclude "*/target"` 会连同源码包 `backend/src/main/java/dev/pulseops/monitor/target/` 一起删掉，构建时报 `package dev.pulseops.monitor.target does not exist`。
+- `.dockerignore` 的模式只相对构建上下文根匹配，裸 `target/` **不会**误删嵌套的同名源码目录；无需为此加前导斜杠，也不要使用 `!` 反向放行（目录被排除后其内容通常无法重新包含）。
+- 构建报 `package ... does not exist` 时，先在部署目录确认源码是否存在，再检查 `.dockerignore`；源码未送达时修改忽略规则无效。
+- 逐步部署命令见 [`../plans/phase5a-deploy-runbook.md`](../plans/phase5a-deploy-runbook.md)。
+
 ## 日志
 
 - 应用与 Caddy 只写 stdout/stderr，不使用宿主日志文件，也不引入 logrotate。
