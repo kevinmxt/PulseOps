@@ -45,7 +45,7 @@
 - `.env.example` 只允许占位值。
 - 不记录完整心跳令牌、密码和敏感请求头。
 - 心跳令牌只以 SHA-256 摘要持久化；上报接口不记录完整令牌或请求 URI。
-- 心跳上报的限流、请求体上限与 HTTPS 强制要求见 [`../specs/heartbeat.md`](../specs/heartbeat.md#上报接口)；`X-Forwarded-Proto` 仅在来源为回环地址（本地代理）时可信。
+- 心跳上报的限流、请求体上限与 HTTPS 强制要求见 [`../specs/heartbeat.md`](../specs/heartbeat.md#上报接口)；`X-Forwarded-Proto` 仅在请求来自受信任代理（`edge` 子网）时可信，规则见 [`../specs/auth.md`](../specs/auth.md#可信代理与客户端地址)。
 - 默认不记录被监控 API 的完整响应正文。
 - 错误摘要必须截断并避免敏感信息。
 - 不向用户返回内部堆栈、连接串或环境变量。

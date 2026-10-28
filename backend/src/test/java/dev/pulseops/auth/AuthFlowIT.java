@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
@@ -126,6 +127,18 @@ class AuthFlowIT {
                 .isEqualTo("/");
         assertThat(environment.getProperty("server.servlet.session.timeout"))
                 .isEqualTo("30m");
+    }
+
+    @Test
+    void forwardHeaderTrustIsLimitedToTheEdgeSubnet() {
+        assertThat(environment.getProperty("server.forward-headers-strategy"))
+                .isEqualTo("native");
+        String internalProxies = environment.getProperty(
+                "server.tomcat.remoteip.internal-proxies");
+        assertThat(internalProxies).isEqualTo(ProxyRateLimitSupport.EDGE_PROXY_REGEX);
+        assertThat(Pattern.matches(internalProxies, "172.28.0.3")).isTrue();
+        assertThat(Pattern.matches(internalProxies, "172.29.0.50")).isFalse();
+        assertThat(Pattern.matches(internalProxies, "127.0.0.1")).isFalse();
     }
 
     @Test
