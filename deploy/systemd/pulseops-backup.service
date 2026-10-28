@@ -1,0 +1,14 @@
+[Unit]
+Description=PulseOps database backup
+Wants=network-online.target
+After=network-online.target docker.service
+OnFailure=pulseops-backup-failure.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pulseops/pulseops.env
+WorkingDirectory=/opt/pulseops
+UMask=0077
+NoNewPrivileges=true
+TimeoutStartSec=30min
+ExecStart=/opt/pulseops/scripts/backup.sh

@@ -204,7 +204,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 
 ### 密钥与配置
 
-- `age` 私钥：`/etc/pulseops/age.key`，600，属主部署账号；离线备份一份，不进入 Git。
+- `age` 私钥：`/etc/pulseops/age.key`，600，属主为运行备份服务的账号（systemd 默认 root）；离线备份一份，不进入 Git。
 - rclone 配置：`/etc/pulseops/rclone.conf`，600；remote 名称与路径由环境变量提供。
 - 5A 使用 rclone 本地 remote（目录位于 VM 内另一路径）验证加密、上传、保留与恢复全链路；5B 换成真实桶，脚本不变。
 
@@ -292,6 +292,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 | `scripts/export-caddy-root-ca.sh` | 本地 HTTPS 根证书导出 |
 | `scripts/deploy.sh`、`scripts/rollback.sh` | 部署与回滚 |
 | `scripts/backup.sh`（扩展） | 加密、上传、ping |
+| `scripts/backup-failure.sh` | 失败时 ping Healthchecks `/fail` |
 | `scripts/harden-vps.sh` | 防火墙与 SSH 加固 |
 | `docs/adr/0010-*.md` | 生产拓扑与可信代理边界 |
 | `docs/quality/phase5a-acceptance.md` | 验收证据 |

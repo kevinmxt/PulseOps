@@ -1,0 +1,11 @@
+[Unit]
+Description=PulseOps backup failure notification
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pulseops/pulseops.env
+WorkingDirectory=/opt/pulseops
+NoNewPrivileges=true
+ExecStart=/opt/pulseops/scripts/backup-failure.sh
