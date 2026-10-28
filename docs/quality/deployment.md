@@ -9,12 +9,39 @@
 
 预算目标为全部基础设施尽量低于 S$50/月。采购前需核实机房、税费、续费、流量和备份价格。
 
+## 生产拓扑与 Compose
+
+生产编排为 [`compose.prod.yaml`](../../compose.prod.yaml)，设计决策与取舍见 [ADR-0010](../adr/0010-production-topology-and-trusted-proxy.md)。
+
+```text
+浏览器 / 外部监控
+    │ HTTPS 443（5A: pulseops.test + 内部 CA；5B: 真实域名 + ACME）
+    ▼
+宿主 :80 :443 ──► caddy（非 root，容器内 8080/8443）
+                    ├── /                  → 静态 dist（SPA fallback）
+                    ├── /api/*             → backend:8080
+                    └── /actuator/health*  → backend:8080
+
+edge 172.28.0.0/24 ── caddy, backend
+data 172.28.1.0/24 ── backend, postgres（无宿主端口）
+```
+
+- 三个服务：`caddy`、`backend`、`postgres`；项目名固定 `pulseops`，全部 `restart: unless-stopped`。
+- 宿主只发布 80/443；backend 与 postgres 不发布宿主端口。Caddy 是唯一对外入口，不暴露 `/actuator/metrics`。
+- 网络：`edge` 承载 Caddy→backend；`data` 承载 backend→postgres；postgres 不加入 `edge`。
+- 资源限制：postgres 1 GB / 1 CPU / 256 pids；backend 768 MB / 1 CPU / 512 pids；Caddy 128 MB / 0.5 CPU / 128 pids。
+- 容器加固：全部 `no-new-privileges`；backend 使用只读根文件系统、`tmpfs /tmp` 与 `cap_drop: [ALL]`；backend 与 Caddy 以非 root 运行（uid 10001 / 10002）。
+- 卷：`pulseops-postgres-data`、`pulseops-caddy-data`、`pulseops-caddy-config`。
+- 环境变量来自 `/etc/pulseops/pulseops.env`（600），模板见 [`deploy/env.prod.example`](../../deploy/env.prod.example)；`IMAGE_TAG` 使用 Git short SHA。
+- CI 在 PR 中仅当部署相关文件变更时运行 `docker compose config` 与 `caddy validate`；master 每次 push 都运行校验并构建后端与 Caddy 镜像，但不推送（[`deploy.yml`](../../.github/workflows/deploy.yml)）。
+
 ## 网络边界
-- 仅公开必要的 HTTP/HTTPS 入口和受控的 SSH 入口。
-- PostgreSQL 不直接暴露到公网。
+- 仅公开 80/443 与受控的 SSH 22；宿主端口映射见「生产拓扑与 Compose」。
+- PostgreSQL 不直接暴露到公网，且只在 `data` 网络内可达。
 - 使用独立且权限受限的数据库账号。
 - 生产环境启用 HTTPS。
 - 心跳令牌不得通过不安全的公开 HTTP 传输。
+- 反向代理头只在直接对端来自 `edge` 子网时可信；客户端地址与心跳 HTTPS 判定规则见 [`../specs/auth.md#可信代理与客户端地址`](../specs/auth.md#可信代理与客户端地址)。
 
 ## 公网发布硬性门槛
 
@@ -113,6 +140,14 @@ SQL
 
 替换哈希与用户名后执行，并重启应用使内存中的现有会话失效。不要通过重新设置引导变量覆盖已有账号。
 
+## 日志
+
+- 应用与 Caddy 只写 stdout/stderr，不使用宿主日志文件，也不引入 logrotate。
+- Docker `json-file` 驱动统一 `max-size=10m`、`max-file=5`，单服务最多约 50 MB。查看：`docker compose -f compose.prod.yaml logs -f --tail=200`。
+- Caddy 不开启访问日志；stderr 只包含 Caddy 的运行与错误日志。健康检查会产生持续噪声，排障时临时开启访问日志即可。
+- 备份 systemd 单元与脚本输出进入 journald：`journalctl -u pulseops-backup.service -n 50 --no-pager`。
+- 日志不得包含密钥、令牌、会话或外部服务凭据；认证日志字段见 [`../specs/auth.md#日志与敏感信息`](../specs/auth.md#日志与敏感信息)。
+
 ## 备份与恢复
 
 备份包含 `app_user.password_hash` 与 `heartbeat_credential.token_hash` 等敏感数据，文件必须只允许部署账号读取。
@@ -143,6 +178,8 @@ SQL
 - 备份文件包含密码哈希与心跳令牌摘要，不得提交到 Git 或通过聊天工具传输；`.gitignore` 已忽略 `backups/`。
 - 未配置 `AGE_RECIPIENT`/`BACKUP_RCLONE_REMOTE`/`BACKUP_RCLONE_PATH` 时仅执行本地备份。三者齐全时，脚本加密上传，校验远端对象大小后删除本地 `.dump.age`。
 - 日志只包含文件名、大小与保留数量，不包含 age 密钥、rclone 凭据、Healthchecks URL 或备份内容。
+- 异地链路使用 `rclone --contimeout 10s --timeout 5m`；Healthchecks 成功 ping 最多重试 3 次。
+- systemd 单元设置 `UMask=0077`、`NoNewPrivileges=true`、`TimeoutStartSec=30min`，并排在 `docker.service` 之后启动。
 
 ### 自动调度与异地
 
@@ -224,6 +261,10 @@ sudo ./scripts/restore.sh /tmp/backup.dump pulseops_restore
 
 部署与回滚脚本在 VM/VPS 内以 root 运行，读取 `/etc/pulseops/pulseops.env`（600）。
 
+- 环境文件必须权限 600 且使用 LF 行尾；CRLF 会导致解析失败。
+- 可用环境变量：`PULSEOPS_ENV_FILE`（默认 `/etc/pulseops/pulseops.env`）、`PULSEOPS_STATE_DIR`（部署状态目录，默认仓库根）、`DEPLOY_TAG`（`--tag` 缺省时使用）、`DEPLOY_HEALTH_TIMEOUT_SECONDS` / `ROLLBACK_HEALTH_TIMEOUT_SECONDS`（健康门禁超时，默认 120 秒）。
+- 磁盘余量低于 2 GiB 时预检失败并中止。
+
 ### 冒烟测试
 
 `scripts/smoke-test.sh` 是部署、回滚与验收共用的独立冒烟脚本：
@@ -248,13 +289,12 @@ sudo ./scripts/deploy.sh --dry-run --tag <git-short-sha>
 sudo ./scripts/deploy.sh --tag <git-short-sha>
 ```
 
-- 预检：env 文件权限、`compose config`、磁盘余量与当前服务健康状态。
+- 预检：env 文件权限、`compose config`、磁盘余量与当前服务健康状态；当前栈不健康时只警告并继续。
 - 自动执行 `scripts/backup.sh`；备份失败时在构建前中止。
-- 使用新 tag 构建并启动，等待三个服务 healthy（默认 120 秒），再运行冒烟脚本。
+- 记录当前 tag 的 schema rank，然后使用新 tag 构建并启动，等待三个服务 healthy（默认 120 秒），再运行冒烟脚本。
 - 健康门禁或冒烟失败时不自动回滚，打印 `rollback.sh <previous-tag>` 命令并非零退出。
 - 成功后写入 `.deployed-tag`、`.previous-tag` 与 `.deployed-tags/<tag>.schema`。
 - 清理每个镜像超过 5 个的旧 tag，并执行 `docker builder prune` 清理构建缓存。
-- `DEPLOY_HEALTH_TIMEOUT_SECONDS` 可覆盖健康门禁超时。
 
 ### 回滚
 
@@ -263,7 +303,7 @@ sudo ./scripts/rollback.sh --dry-run [<tag>]
 sudo ./scripts/rollback.sh [<tag>]
 ```
 
-- 未指定 tag 时使用 `.previous-tag`；校验镜像存在，不重新构建。
+- 未指定 tag 时使用 `.previous-tag`；校验 `pulseops-backend` 与 `pulseops-caddy` 两个镜像存在，不重新构建。
 - 切换 `IMAGE_TAG` 并启动，等待 healthy 与冒烟通过后更新部署状态。
 - 目标 tag 的 schema rank 低于当前数据库时拒绝执行；缺少 schema 元数据时同样拒绝，先核对迁移并写入 `.deployed-tags/<tag>.schema` 后再重试。
 - 健康门禁或冒烟失败时非零退出，不继续自动操作。

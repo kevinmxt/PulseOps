@@ -7,12 +7,14 @@
 ## 目录结构
 
 ```
-backend/        Spring Boot 3.5（Java 21）后端
-frontend/       Vue 3 + TypeScript + Vite 前端
-docs/           产品、架构、规范与运维文档
-scripts/        数据库备份与恢复脚本
-compose.yaml    本地 PostgreSQL
-.env.example    本地环境变量占位示例
+backend/           Spring Boot 3.5（Java 21）后端
+frontend/          Vue 3 + TypeScript + Vite 前端（Dockerfile 与 deploy/Caddyfile 构建生产镜像）
+docs/              产品、架构、规范与运维文档
+scripts/           备份、恢复、部署、回滚、加固与冒烟脚本
+deploy/            systemd 备份单元与生产环境变量模板
+compose.yaml       本地 PostgreSQL
+compose.prod.yaml  生产三服务编排（Caddy + backend + PostgreSQL）
+.env.example       本地环境变量占位示例
 ```
 
 ## 环境要求
@@ -80,7 +82,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 - 检查历史分页、活动 Incident、Incident 过滤与通知投递状态。
 - 心跳一次性令牌、上报命令、轮换与撤销。
 
-管理 API 默认只监听回环地址。认证始终启用，Phase 4B 已完成未认证 401/403、登录限流、会话与 CSRF 校验。公网发布仍需完成 Phase 5 的 TLS、代理与防火墙配置，详见 [`docs/quality/deployment.md`](docs/quality/deployment.md)。
+管理 API 默认只监听回环地址。认证始终启用，Phase 4B 已完成未认证 401/403、登录限流、会话与 CSRF 校验。公网发布仍需完成 Phase 5 的 TLS、代理与防火墙配置，详见 [`docs/quality/deployment.md`](docs/quality/deployment.md)；生产拓扑、可信代理与备份自动化决策见 [ADR-0010](docs/adr/0010-production-topology-and-trusted-proxy.md)。
 
 ## 配置
 
@@ -100,7 +102,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `PULSEOPS_TELEGRAM_BOT_TOKEN` | 空（通知关闭） | Telegram Bot Token；必须与 Chat ID 同时配置 |
 | `PULSEOPS_TELEGRAM_CHAT_ID` | 空（通知关闭） | Telegram Chat ID |
 | `PULSEOPS_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API 基地址，仅用于测试或代理 |
-| `HEARTBEAT_REQUIRE_HTTPS` | `false` | 心跳上报是否要求 HTTPS；仅信任 `edge` 子网代理设置的 `X-Forwarded-Proto: https`，生产由 Caddy 设置，详见 [`docs/specs/auth.md`](docs/specs/auth.md) |
+| `HEARTBEAT_REQUIRE_HTTPS` | `false` | 心跳上报是否要求 HTTPS；可信代理、客户端地址与 HTTPS 判定规则见 [`docs/specs/auth.md`](docs/specs/auth.md#可信代理与客户端地址) |
 
 数据库结构变更一律通过 `backend/src/main/resources/db/migration/` 下的 Flyway 迁移完成，不使用 Hibernate 自动建表。
 

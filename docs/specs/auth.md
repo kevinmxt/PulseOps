@@ -88,15 +88,15 @@
 - 容量拒绝不驱逐仍在窗口内的键；容量满时已有键继续按原配额执行。
 - 容量拒绝记录 WARN 日志，字段为远端地址、跟踪键数量与 `traceId`，不记录用户名或其他凭据。
 - 可用性权衡：容量耗尽期间新键登录会被拒绝，直到有窗口过期；单管理员场景下正常登录只产生一个键，影响有限；面对高基数键的攻击时优先保证内存上限与既有键可用，而不是随机驱逐有效窗口。容量拒绝时的过期回收最多每秒触发一次，避免高频拒绝放大全量扫描开销。
-- 限流使用经可信代理还原后的客户端地址；规则见「可信代理与客户端地址」。
+- 限流使用经可信代理还原后的客户端地址；规则见「可信代理与客户端地址」。同一 NAT 后的多个客户端共享该地址，因此也共享配额；单管理员场景可接受。
 - 限流不产生账号锁定状态，避免管理员被恶意锁定后无法自助恢复。
 
 ## 可信代理与客户端地址
 
-- 后端启用 `server.forward-headers-strategy=native`，Tomcat `remoteip.internal-proxies` 仅匹配 `172.28.0.0/24`（Compose `edge` 子网）。
-- 来自该子网的 `X-Forwarded-For` 决定限流键与认证日志中的客户端地址；其他来源的同名头被忽略。
-- 心跳上报的 HTTPS 判断接受受信任代理设置的 `X-Forwarded-Proto: https`。
-- 后端不发布宿主端口，生产只能经 Caddy 访问；这是网络层纵深防御，不替代上述信任规则。
+- 后端固定启用 `server.forward-headers-strategy=native`；Tomcat `remoteip.internal-proxies` 配置为正则 `172\.28\.0\.\d{1,3}`（Compose `edge` 子网）。只有直接对端地址匹配该正则时，Tomcat 才采纳 `X-Forwarded-For` 与 `X-Forwarded-Proto`；其他来源的同名头被忽略。
+- 登录限流键与认证日志使用还原后的客户端地址；Tomcat 同时根据受信任的 `X-Forwarded-Proto` 设置 `request.isSecure()`。
+- 心跳上报的 HTTPS 判断：`request.isSecure()` 为 true（原生 TLS，或经受信任代理还原的 HTTPS）即通过。另保留“回环来源 + `X-Forwarded-Proto: https`”的回退，仅覆盖本地直连与测试；生产流量经 Caddy 进入时走 `request.isSecure()` 分支。
+- 后端不发布宿主端口，生产只能经 Caddy 访问；这是网络层纵深防御，不替代上述信任规则。Tomcat 以整串匹配该正则，实际只信任 `172.28.0.0/24` 内的地址；若未来发布 backend 端口或增加新的代理，必须重新评审信任规则。
 
 ## 修改密码
 
