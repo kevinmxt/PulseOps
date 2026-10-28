@@ -90,3 +90,20 @@ Phase 3 已完成，可以进入 Phase 4A（最小可用 UI）。代码整体质
 - 建议在公网开放前加固登录限流的并发配额与容量溢出行为；在目标 Linux VPS 上复核脚本执行权限、TLS/代理边界、备份权限和恢复失败清理路径。
 - 本次环境没有 Docker，Node.js 版本也不符合项目要求；Maven Wrapper 下载因网络不可用失败。因此本次没有独立重跑后端集成测试、前端测试/构建或恢复演练。详情见 `phase4b-review.md`。
 - **历史报告保留：** Phase 1、2、3、4A 的原有报告与以上内容均保留；本次只新增 Phase 4B 三份报告，并在此 README 末尾追加本节。
+
+# PulseOps Phase 5A 审阅资料
+
+## 阅读顺序
+
+1. [`phase5a-review.md`](phase5a-review.md)：部署拓扑、容器加固、部署/回滚、备份恢复脚本与验证边界。
+2. [`phase5a-roadmap-notes.md`](phase5a-roadmap-notes.md)：Phase 5B 真实 VPS / 公网验收建议。
+3. [`phase5a-remediation.md`](phase5a-remediation.md)：公网开放门槛与后续加固任务清单。
+
+## 审阅范围与结论
+
+- 审阅对象：本次上传的 `PulseOps-master (5).zip` 源码快照。
+- Phase 5A 的本地 VM 验收记录较完整，可收口并进入 Phase 5B；本次 `bash -n` 检查所有 `scripts/*.sh` 均通过。
+- **尚不能据此认定公网生产就绪：** 真实域名/ACME、真实对象存储、真实外部 Healthchecks/告警、真实公网浏览器端到端和连续运行观察仍属于 5B。
+- 本次未独立运行 Docker VM、Maven/前端测试或真实灾备演练；测试与 VM 结果均明确引用仓库现有 `docs/quality/phase5a-acceptance.md` 证据。
+- **历史报告保留：** Phase 1、2、3、4A、4B 原有报告和索引内容均保留；本次仅新增 Phase 5A 三份报告并在 README 末尾追加本节。
+
