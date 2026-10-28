@@ -221,19 +221,65 @@ sudo ./scripts/restore.sh /tmp/backup.dump pulseops_restore
 4B 本地演练证据见 [`phase4b-acceptance.md`](phase4b-acceptance.md)；5A 异地加密副本恢复证据见 [`phase5a-acceptance.md`](phase5a-acceptance.md)。仅确认备份文件存在，不代表恢复能力已验证。
 
 ## 发布与回滚
-发布前：
-1. 运行测试和构建。
-2. 检查迁移脚本。
-3. 备份关键数据。
-4. 检查环境变量和密钥。
-5. 准备回滚方案。
 
-发布后：
-1. 检查应用健康状态。
-2. 检查数据库连接和迁移状态。
-3. 执行关键功能冒烟测试。
-4. 检查日志和资源占用。
-5. 确认外部监控能够探测服务。
+部署与回滚脚本在 VM/VPS 内以 root 运行，读取 `/etc/pulseops/pulseops.env`（600）。
+
+### 冒烟测试
+
+`scripts/smoke-test.sh` 是部署、回滚与验收共用的独立冒烟脚本：
+
+- `/` 返回 200。
+- 匿名 `/api/v1/monitors` 返回 401。
+- `/actuator/health` 返回 200 且状态为 `UP`。
+
+5A 本地内部 CA 示例：
+
+```bash
+./scripts/smoke-test.sh --url https://pulseops.test \
+  --resolve pulseops.test:443:127.0.0.1 --insecure
+```
+
+5B 使用真实域名与证书时去掉 `--resolve` 与 `--insecure`。
+
+### 部署
+
+```bash
+sudo ./scripts/deploy.sh --dry-run --tag <git-short-sha>
+sudo ./scripts/deploy.sh --tag <git-short-sha>
+```
+
+- 预检：env 文件权限、`compose config`、磁盘余量与当前服务健康状态。
+- 自动执行 `scripts/backup.sh`；备份失败时在构建前中止。
+- 使用新 tag 构建并启动，等待三个服务 healthy（默认 120 秒），再运行冒烟脚本。
+- 健康门禁或冒烟失败时不自动回滚，打印 `rollback.sh <previous-tag>` 命令并非零退出。
+- 成功后写入 `.deployed-tag`、`.previous-tag` 与 `.deployed-tags/<tag>.schema`。
+- 清理每个镜像超过 5 个的旧 tag，并执行 `docker builder prune` 清理构建缓存。
+- `DEPLOY_HEALTH_TIMEOUT_SECONDS` 可覆盖健康门禁超时。
+
+### 回滚
+
+```bash
+sudo ./scripts/rollback.sh --dry-run [<tag>]
+sudo ./scripts/rollback.sh [<tag>]
+```
+
+- 未指定 tag 时使用 `.previous-tag`；校验镜像存在，不重新构建。
+- 切换 `IMAGE_TAG` 并启动，等待 healthy 与冒烟通过后更新部署状态。
+- 目标 tag 的 schema rank 低于当前数据库时拒绝执行；缺少 schema 元数据时同样拒绝，先核对迁移并写入 `.deployed-tags/<tag>.schema` 后再重试。
+- 健康门禁或冒烟失败时非零退出，不继续自动操作。
+
+发布后仍应检查日志与资源占用，并确认外部监控能够探测服务（5B）。
+
+### Schema 不兼容时的恢复流程
+
+Flyway 只做前向迁移，镜像回滚不会撤销迁移。回滚脚本拒绝旧 schema 时：
+
+1. 用部署前备份（`/var/backups/pulseops/*.dump` 或异地 `.dump.age`）通过 `scripts/restore.sh` 恢复到新数据库。
+2. 校验 Flyway 历史、核心表行数与抽样数据。
+3. 将 `/etc/pulseops/pulseops.env` 的 `DB_URL` 指向恢复库（Compose 会将该值注入 backend）。
+4. 重新运行 `rollback.sh <tag>` 并完成健康检查与冒烟。
+
+恢复库切换 `DB_URL` 是不可逆操作；切换前保留原库与备份。
 
 ## 独立外部监控
 PulseOps 不应只依靠自己监控自己。应使用独立的外部服务检查 PulseOps 的健康端点，避免 VPS 宕机后告警系统同时失效。

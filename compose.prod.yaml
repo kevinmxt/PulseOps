@@ -53,7 +53,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pulseops}
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/pulseops}
       DB_USERNAME: ${POSTGRES_USER:-pulseops}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       SERVER_ADDRESS: 0.0.0.0
