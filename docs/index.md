@@ -41,8 +41,9 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | `quality/phase4a-acceptance.md` | Phase 4A 验收证据（UI、令牌、Incident、投递）与限制 | 阶段验收与回顾        |
 | `quality/phase4b-acceptance.md` | Phase 4B 验收证据（认证、清理、备份恢复）与限制 | 阶段验收与回顾        |
 | `quality/phase5a-acceptance.md` | Phase 5A 验收证据（异地恢复演练与外部健康端点验证） | 阶段验收与回顾        |
-| `quality/deployment.md`      | VPS、Compose、HTTPS、备份、公网发布硬门槛 | 部署和运维          |
+| `quality/deployment.md`      | 生产拓扑、Compose、HTTPS、日志、备份、发布回滚、加固与外部监控 | 部署和运维          |
 | `adr/README.md`              | 架构决策记录规则             | 重大技术决策         |
+| `adr/0010-production-topology-and-trusted-proxy.md` | 生产拓扑、网络边界、可信代理与备份自动化决策 | 部署架构与安全边界 |
 
 ## 规范冲突处理
 

@@ -22,7 +22,7 @@
 - 不得将完整令牌写入日志。
 - 按令牌 SHA-256 摘要限流 120 次/分钟（无效令牌同样计数），超出返回 `429` 并带 `Retry-After`；内存中的跟踪键数量设上限，防止无效令牌无限增长。
 - 请求体上限 1KB，超出返回 `413`。
-- `pulseops.heartbeat.require-https` 开启时，仅接受原生 TLS，或来自受信任代理（`edge` 子网）并携带 `X-Forwarded-Proto: https` 的请求，否则返回 `400`；信任规则见 [`auth.md`](auth.md#可信代理与客户端地址)。
+- `pulseops.heartbeat.require-https` 开启时，仅接受被判定为 HTTPS 的请求，否则返回 `400`；判定规则、可信代理与客户端地址统一见 [`auth.md`](auth.md#可信代理与客户端地址)。
 
 ## 令牌轮换与撤销
 
