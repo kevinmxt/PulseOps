@@ -128,14 +128,64 @@ SQL
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `BACKUP_DIR` | `./backups` | 备份目录；不存在时创建并设为仅属主可访问 |
-| `BACKUP_RETENTION_COUNT` | `7` | 每个数据库保留的份数，超出后删除最旧文件 |
+| `BACKUP_RETENTION_COUNT` | `7` | 本地每个数据库保留的份数，超出后删除最旧文件 |
+| `BACKUP_OFFSITE_RETENTION_COUNT` | `14` | 每个数据库在异地保留的加密备份份数 |
 | `COMPOSE_SERVICE` | `postgres` | 运行 PostgreSQL 的 Compose 服务名 |
+| `AGE_RECIPIENT` | 空 | age 公钥；与 remote/path 同时设置才启用异地链路 |
+| `BACKUP_RCLONE_REMOTE` | 空 | rclone remote 名称 |
+| `BACKUP_RCLONE_PATH` | 空 | 远端前缀，例如 `pulseops/db` |
+| `RCLONE_CONFIG` | `/etc/pulseops/rclone.conf` | rclone 配置路径（600） |
+| `HEALTHCHECKS_PING_URL` | 空 | 成功 ping URL；留空则跳过 |
 
 - 文件名为 `<数据库名>-<UTC 时间戳>.dump`，格式为 `pg_dump -Fc`。
 - 备份先写入临时文件，`pg_restore --list` 自检通过后才改名为正式文件；失败不会留下半成品。
 - 脚本使用 `umask 077` 并显式 `chmod 600`，在 Linux 上备份目录与文件仅属主可访问。
 - 备份文件包含密码哈希与心跳令牌摘要，不得提交到 Git 或通过聊天工具传输；`.gitignore` 已忽略 `backups/`。
-- 定时调度、异地存放与加密属于 Phase 5A 部署准备任务。
+- 未配置 `AGE_RECIPIENT`/`BACKUP_RCLONE_REMOTE`/`BACKUP_RCLONE_PATH` 时仅执行本地备份。三者齐全时，脚本加密上传，校验远端对象大小后删除本地 `.dump.age`。
+- 日志只包含文件名、大小与保留数量，不包含 age 密钥、rclone 凭据、Healthchecks URL 或备份内容。
+
+### 自动调度与异地
+
+1. 准备密钥与配置，权限均为 600：
+
+   ```bash
+   sudo age-keygen -o /etc/pulseops/age.key
+   sudo chmod 600 /etc/pulseops/age.key
+   sudo install -m 600 /dev/null /etc/pulseops/rclone.conf
+   ```
+
+   把 `age-keygen` 输出的公钥填入 `/etc/pulseops/pulseops.env` 的 `AGE_RECIPIENT`。5A 可用本地 rclone remote：
+
+   ```ini
+   [local]
+   type = local
+   ```
+
+   并在环境文件设置 `BACKUP_RCLONE_REMOTE=local`、`BACKUP_RCLONE_PATH=/var/backups/pulseops-offsite/pulseops/db`。模板中的 `BACKUP_RCLONE_PATH` 是占位符：5A 用上述绝对本地路径，5B 改为对象存储前缀（如 `pulseops/db`）。5A 可用本地 HTTP 端点模拟 Healthchecks 成功/失败 ping，5B 换成真实 URL。
+   环境文件还必须包含 `COMPOSE_FILE=/opt/pulseops/compose.prod.yaml` 与 `COMPOSE_PROJECT_NAME=pulseops`，systemd 单元才能找到生产编排。
+   备份服务默认以 root 运行，因此迁移与恢复操作需使用 sudo；密钥与配置仍保持 600。异地链路依赖 `age`、`rclone`、`jq`；`provision-vm.sh` 已安装前两者与 `jq`。
+
+2. 安装并启用 systemd 单元：
+
+   ```bash
+   sudo install -m 0644 deploy/systemd/pulseops-backup.service /etc/systemd/system/
+   sudo install -m 0644 deploy/systemd/pulseops-backup.timer /etc/systemd/system/
+   sudo install -m 0644 deploy/systemd/pulseops-backup-failure.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now pulseops-backup.timer
+   systemctl list-timers pulseops-backup.timer
+   ```
+
+   timer 使用 `OnCalendar=*-*-* 03:17:00 UTC` 与 `Persistent=true`；手动触发：
+
+   ```bash
+   sudo systemctl start pulseops-backup.service
+   journalctl -u pulseops-backup.service -n 50 --no-pager
+   ```
+
+3. 流程：本地 dump 与自检 → 保留 7 份 → age 加密 → rclone `copyto` → 校验远端对象存在且大小一致 → 异地保留 14 份 → ping Healthchecks 成功 URL。
+4. 任一步失败时服务以非零退出，`OnFailure=pulseops-backup-failure.service` 会 ping `${HEALTHCHECKS_PING_URL%/}/fail`。
+5. age 私钥与 rclone 配置权限必须为 600，并且不进入 Git；私钥需离线备份一份。
 
 ### 恢复与演练
 
@@ -148,6 +198,18 @@ SQL
 - 脚本始终拒绝恢复进 Compose 服务的源库（`POSTGRES_DB`）以及 `postgres`/`template0`/`template1` 维护库。
 - 恢复使用 `pg_restore --no-owner --no-privileges --exit-on-error`；任一对象失败即停止并删除未完成的恢复库，不留下半成品。
 - 推荐恢复到独立库并在其上启动应用验证，不要直接覆盖生产库。
+
+从异地加密副本恢复：
+
+```bash
+sudo rclone --config /etc/pulseops/rclone.conf \
+  copyto "<BACKUP_RCLONE_REMOTE>:<BACKUP_RCLONE_PATH>/<file>.dump.age" /tmp/backup.dump.age
+sudo age --decrypt --identity /etc/pulseops/age.key \
+  --output /tmp/backup.dump /tmp/backup.dump.age
+sudo ./scripts/restore.sh /tmp/backup.dump pulseops_restore
+```
+
+`age.key` 权限必须为 600；`BACKUP_RCLONE_REMOTE` 与 `BACKUP_RCLONE_PATH` 使用环境文件中的值。
 
 恢复演练至少覆盖：
 
