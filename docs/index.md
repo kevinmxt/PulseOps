@@ -25,6 +25,7 @@ PulseOps 是面向个人开发者的轻量级 HTTP/HTTPS API 与后台定时任�
 | `plans/phase4b-auth-data.md` | Phase 4B 认证与数据维护设计共识 | 阶段设计回顾、spec 与 ticket 输入 |
 | `plans/phase5a-deployment.md` | Phase 5A 部署准备设计共识 | 阶段设计回顾、spec 与 ticket 输入 |
 | `plans/phase5a-vm-setup.md` | 本地 Multipass 演练环境安装与配置 | 环境准备与 5B 预演 |
+| `plans/phase5a-deploy-runbook.md` | 当前工程部署到本地 VM 并从 Windows 访问的逐步运行手册 | 本地部署演练、5B 上线前预演 |
 | `architecture/overview.md`   | 技术栈、模块边界、架构约束        | 新模块或架构调整       |
 | `architecture/data-model.md` | 核心实体和数据语义            | 数据库、事务、状态一致性   |
 | `architecture/security.md`   | SSRF、认证、令牌、网络安全      | 所有安全敏感改动       |
