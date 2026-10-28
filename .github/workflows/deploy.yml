@@ -1,0 +1,63 @@
+name: Deploy artifacts
+
+on:
+  pull_request:
+    paths:
+      - 'compose.prod.yaml'
+      - 'deploy/**'
+      - 'frontend/deploy/**'
+      - 'backend/Dockerfile'
+      - 'backend/.dockerignore'
+      - 'frontend/Dockerfile'
+      - 'frontend/.dockerignore'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    name: Validate and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate Compose configuration
+        run: docker compose -f compose.prod.yaml --env-file deploy/env.prod.example config -q
+
+      - name: Validate Caddy configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/frontend/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            --entrypoint caddy caddy:2-alpine \
+            validate --config /etc/caddy/Caddyfile
+
+      - name: Set up Docker Buildx
+        if: github.event_name == 'push'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: false
+          tags: pulseops-backend:ci
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build frontend image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: false
+          tags: pulseops-caddy:ci
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend

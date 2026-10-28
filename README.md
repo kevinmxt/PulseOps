@@ -182,7 +182,7 @@ npm test         # Vitest 契约测试
 npm run build    # 类型检查与生产构建
 ```
 
-CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；当前阶段证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，历史证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)、[`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)、[`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
+CI 在 PR 与 master push 时执行后端 `verify` 与前端 `npm ci && npm test && npm run build`；PR 仅在部署相关文件变更时、master 每次 push 时运行 `.github/workflows/deploy.yml`（Compose 与 Caddy 校验；master 构建前后端镜像但不推送）。当前阶段证据见 [`docs/quality/phase4b-acceptance.md`](docs/quality/phase4b-acceptance.md)，历史证据见 [`docs/quality/phase4a-acceptance.md`](docs/quality/phase4a-acceptance.md)、[`docs/quality/phase3-acceptance.md`](docs/quality/phase3-acceptance.md)、[`docs/quality/phase2-acceptance.md`](docs/quality/phase2-acceptance.md) 与 [`docs/quality/phase1-acceptance.md`](docs/quality/phase1-acceptance.md)。
 
 ## 安全说明
 
