@@ -253,7 +253,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 
 `scripts/harden-vps.sh` 在 VM 与 VPS 上共用，幂等并支持 `--dry-run`。
 
-- ufw：默认拒绝入站、允许出站；`limit 22/tcp`；允许 80/443；按顺序先放行 22 再启用。
+- ufw：先重置为最小规则集；默认拒绝入站、允许出站；`limit 22/tcp`；允许 80/443；按顺序先放行 22 再启用。
 - sshd：`/etc/ssh/sshd_config.d/99-pulseops-hardening.conf` 设置仅密钥登录、禁用密码与交互式认证、`PermitRootLogin prohibit-password`、`MaxAuthTries 3`。
 - 应用前执行 `sshd -t`，通过后才 `systemctl reload ssh`。
 - 执行提示：保留当前会话，另开一个会话验证登录成功后才断开旧会话。
@@ -350,6 +350,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
 - 5A 的 Caddy 根 CA 只用于本地信任，不代表公网证书流程已验证。
 - Docker Hub 镜像源可能缺失个别镜像；必要时手工导入或在 5A 记录限制。
 - 登录限流按真实 IP 计数后，同一 NAT 后的多个客户端共享配额；单管理员场景可接受，需写入文档。
+- 网络层出站目标白名单未实现；应用需访问任意公网监控目标，用户可控 URL 仍由应用层 SSRF 防护约束。
 - 备份加密私钥丢失会导致异地备份不可恢复；离线副本是唯一保障。
 
 ## Phase 5B 衔接

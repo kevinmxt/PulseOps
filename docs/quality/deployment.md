@@ -67,6 +67,30 @@
 
    确保 DNS 指向目标机器、80/443 可达；Caddy 会自动申请并续期证书。
 
+## 防火墙与 SSH 加固
+
+在 VM/VPS 内执行；禁止在 Windows 宿主或 WSL2 中运行 `harden-vps.sh`。
+
+```bash
+sudo ./scripts/harden-vps.sh --dry-run
+sudo ./scripts/harden-vps.sh
+```
+
+- 脚本先 `ufw --force reset`，清空已有规则后只保留 22/80/443（22 使用 limit）；不要在有其他 ufw 规则的主机上运行。
+- 默认拒绝入站、允许出站。当前未实现出站目标白名单：应用需要访问任意公网监控目标、DNS 与 Telegram，用户可控 URL 由应用层 SSRF 防护约束；这是 [`../architecture/security.md`](../architecture/security.md) 网络隔离要求的已知缺口。
+- sshd 写入 `/etc/ssh/sshd_config.d/99-pulseops-hardening.conf`：仅密钥登录、禁用密码与交互式认证、root 仅密钥登录、`MaxAuthTries 3`；`sshd -t` 通过后才 reload，并断言 `sshd -T` 的实际值；前置 drop-in 覆盖设置时脚本失败退出。
+- 执行时保留当前会话，另开一个 SSH 会话确认密钥登录成功后再断开旧会话。
+- 加固前创建快照（Multipass 需先停止实例）：
+
+  ```bash
+  multipass stop <instance>
+  multipass snapshot <instance> --name pre-harden
+  multipass start <instance>
+  ```
+
+  恢复：先停止实例，再 `multipass restore <instance>.<snapshot>`；5B 使用 VPS 控制台或提供商快照。
+- 从外部验证仅 22/80/443 可达，5432/8080 不可达。Docker 发布端口会绕过 ufw，因此生产只发布 80/443。
+
 ## 配置管理
 - 真实凭证通过环境变量或安全部署配置提供。
 - `.env.example` 只能包含占位值。
