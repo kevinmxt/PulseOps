@@ -175,7 +175,7 @@ Caddyfile 放在 `frontend/deploy/Caddyfile`（位于前端构建上下文内）
   - 受信任来源的 `X-Forwarded-For` 决定限流键。
   - 非受信任来源伪造 `X-Forwarded-For` 不影响限流键。
   - 现有认证、CSRF、心跳测试全部保持通过。
-- `docs/specs/auth.md` 中"反向代理头信任规则留待 Phase 5"改为本节的最终规则。
+- `docs/specs/auth.md` 已记录最终的可信代理与客户端地址规则。
 
 ## 日志
 

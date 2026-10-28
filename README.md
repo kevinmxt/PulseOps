@@ -100,7 +100,7 @@ Maven 由 Maven Wrapper 提供，无需单独安装。
 | `PULSEOPS_TELEGRAM_BOT_TOKEN` | 空（通知关闭） | Telegram Bot Token；必须与 Chat ID 同时配置 |
 | `PULSEOPS_TELEGRAM_CHAT_ID` | 空（通知关闭） | Telegram Chat ID |
 | `PULSEOPS_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API 基地址，仅用于测试或代理 |
-| `HEARTBEAT_REQUIRE_HTTPS` | `false` | 心跳上报是否要求 HTTPS；仅信任回环来源的 `X-Forwarded-Proto: https`，生产由本地代理设置 |
+| `HEARTBEAT_REQUIRE_HTTPS` | `false` | 心跳上报是否要求 HTTPS；仅信任 `edge` 子网代理设置的 `X-Forwarded-Proto: https`，生产由 Caddy 设置，详见 [`docs/specs/auth.md`](docs/specs/auth.md) |
 
 数据库结构变更一律通过 `backend/src/main/resources/db/migration/` 下的 Flyway 迁移完成，不使用 Hibernate 自动建表。
 
